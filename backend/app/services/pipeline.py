@@ -1,42 +1,14 @@
 import asyncio
 import logging
 import traceback
-from urllib.parse import urlparse
 from app.config import settings
 from app.services.crawler import crawl_site
 from app.services.extractor import extract_metadata
 from app.services.llm.factory import get_llm_provider
 from app.services.generator import assemble_markdown
+from app.testing.mock_llm import MockLLMProvider
 
 logger = logging.getLogger("app.pipeline")
-
-
-def _mock_structured_data(url: str, pages: list) -> dict:
-    """Return fixture data that skips LLM calls entirely."""
-    domain = urlparse(url).netloc
-    sections = [
-        {
-            "name": "Main",
-            "pages": [
-                {"title": p.title, "url": p.url, "description": p.description or "Mock description"}
-                for p in pages[:10]
-            ],
-        },
-    ]
-    if len(pages) > 10:
-        sections.append({
-            "name": "Optional",
-            "pages": [
-                {"title": p.title, "url": p.url, "description": p.description or "Mock description"}
-                for p in pages[10:]
-            ],
-        })
-    return {
-        "site_name": domain,
-        "summary": f"A website at {domain}.",
-        "context": None,
-        "sections": sections,
-    }
 
 
 async def run_pipeline(job_id: str, url: str, jobs: dict):
@@ -90,7 +62,7 @@ async def run_pipeline(job_id: str, url: str, jobs: dict):
         client_info = job.get("client_info")
         if settings.mock_llm:
             logger.info("[%s] Step 3: Using mock LLM data", job_id[:8])
-            structured_data = _mock_structured_data(url, pages)
+            structured_data = MockLLMProvider.mock_structured_data(url, pages)
         else:
             logger.info("[%s] Step 3: Calling LLM (%s)...", job_id[:8], settings.llm_provider)
             llm = get_llm_provider()
