@@ -6,13 +6,12 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-black">
-      <header className="border-b border-profound-border">
+    <div className="min-h-screen bg-profound-surface">
+      <header className="border-b border-profound-border bg-white">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-3">
-          <div className="w-8 h-8 bg-profound-yellow rounded-md flex items-center justify-center">
-            <span className="text-black font-bold text-sm">T</span>
-          </div>
-          <h1 className="text-lg font-semibold text-white">llms.txt Generator</h1>
+          <img src="/wordmark-dark.png" alt="Profound" className="h-9" />
+          <span className="text-profound-border">|</span>
+          <span className="text-sm font-medium text-profound-muted">llms.txt generator</span>
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-6 py-8">

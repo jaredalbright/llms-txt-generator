@@ -23,12 +23,12 @@ export default function RepromptBar({ onSubmit, disabled }: RepromptBarProps) {
         onChange={(e) => setInstruction(e.target.value)}
         placeholder="e.g., Move blog posts to Optional section"
         disabled={disabled}
-        className="flex-1 bg-profound-card border border-profound-border rounded-lg px-4 py-3 text-white placeholder:text-profound-muted focus:border-profound-yellow focus:ring-1 focus:ring-profound-yellow outline-none transition-colors disabled:opacity-50"
+        className="flex-1 bg-white border border-profound-border rounded-lg px-4 py-3 text-gray-900 placeholder:text-profound-muted focus:border-profound-blue focus:ring-1 focus:ring-profound-blue outline-none transition-colors disabled:opacity-50"
       />
       <button
         type="submit"
         disabled={disabled || !instruction.trim()}
-        className="bg-profound-yellow text-black font-semibold rounded-lg px-6 py-2.5 hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="bg-white text-black font-semibold rounded-lg px-6 py-2.5 border border-profound-border hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Reprompt
       </button>
