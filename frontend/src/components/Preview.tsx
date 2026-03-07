@@ -1,0 +1,23 @@
+import { useMemo } from 'react';
+import { renderMarkdown } from '../lib/markdown';
+
+interface PreviewProps {
+  markdown: string;
+}
+
+export default function Preview({ markdown }: PreviewProps) {
+  const html = useMemo(() => renderMarkdown(markdown), [markdown]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-4 py-2 border-b border-profound-border">
+        <span className="text-sm font-medium text-profound-muted">Preview</span>
+      </div>
+      <div
+        className="flex-1 p-4 prose prose-invert prose-sm max-w-none overflow-auto
+          prose-headings:text-white prose-a:text-profound-yellow prose-blockquote:border-profound-yellow"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </div>
+  );
+}
