@@ -5,11 +5,11 @@ interface StatusBadgeProps {
 }
 
 const statusConfig: Record<JobStatus, { label: string; className: string }> = {
-  pending: { label: 'Pending', className: 'bg-yellow-500/10 text-yellow-400' },
-  crawling: { label: 'Crawling', className: 'bg-yellow-500/10 text-yellow-400' },
-  processing: { label: 'Processing', className: 'bg-blue-500/10 text-blue-400' },
-  completed: { label: 'Complete', className: 'bg-green-500/10 text-green-400' },
-  error: { label: 'Error', className: 'bg-red-500/10 text-red-400' },
+  pending: { label: 'Pending', className: 'bg-blue-50 text-blue-600' },
+  crawling: { label: 'Crawling', className: 'bg-blue-50 text-blue-600' },
+  processing: { label: 'Processing', className: 'bg-indigo-50 text-indigo-600' },
+  completed: { label: 'Complete', className: 'bg-green-50 text-green-700' },
+  error: { label: 'Error', className: 'bg-red-50 text-red-600' },
 };
 
 export default function StatusBadge({ status }: StatusBadgeProps) {
