@@ -9,10 +9,10 @@ interface ProgressViewProps {
 
 export default function ProgressView({ status, pagesFound, message }: ProgressViewProps) {
   return (
-    <div className="bg-profound-card border border-profound-border rounded-xl p-6">
+    <div className="bg-white border border-profound-border rounded-xl p-6">
       <div className="flex items-center gap-4">
         <div className="relative">
-          <div className="w-4 h-4 bg-profound-yellow rounded-full animate-pulse" />
+          <div className="w-4 h-4 bg-profound-blue rounded-full animate-pulse" />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">

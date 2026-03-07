@@ -36,7 +36,7 @@ export default function URLInput({ onSubmit, disabled }: URLInputProps) {
             }}
             placeholder="https://example.com"
             disabled={disabled}
-            className="w-full bg-profound-card border border-profound-border rounded-lg px-4 py-3 text-white placeholder:text-profound-muted focus:border-profound-yellow focus:ring-1 focus:ring-profound-yellow outline-none transition-colors disabled:opacity-50"
+            className="w-full bg-white border border-profound-border rounded-lg px-4 py-3 text-gray-900 placeholder:text-profound-muted focus:border-profound-blue focus:ring-1 focus:ring-profound-blue outline-none transition-colors disabled:opacity-50"
           />
           {validationError && (
             <p className="mt-1 text-sm text-red-500">{validationError}</p>
@@ -45,7 +45,7 @@ export default function URLInput({ onSubmit, disabled }: URLInputProps) {
         <button
           type="submit"
           disabled={disabled || !url}
-          className="bg-profound-yellow text-black font-semibold rounded-lg px-6 py-2.5 hover:bg-yellow-300 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-white text-black font-semibold rounded-lg px-6 py-2.5 border border-profound-border hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Generate
         </button>
@@ -81,7 +81,7 @@ export default function URLInput({ onSubmit, disabled }: URLInputProps) {
             placeholder="e.g., This is a B2B SaaS company focused on developer tools. Prioritize API docs and integration guides."
             disabled={disabled}
             rows={3}
-            className="w-full bg-profound-card border border-profound-border rounded-lg px-4 py-3 text-white text-sm placeholder:text-profound-muted focus:border-profound-yellow focus:ring-1 focus:ring-profound-yellow outline-none transition-colors disabled:opacity-50 resize-none"
+            className="w-full bg-white border border-profound-border rounded-lg px-4 py-3 text-gray-900 text-sm placeholder:text-profound-muted focus:border-profound-blue focus:ring-1 focus:ring-profound-blue outline-none transition-colors disabled:opacity-50 resize-none"
           />
         </div>
       )}

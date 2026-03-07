@@ -7,16 +7,16 @@
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  --color-profound-yellow: #FFEA35;
-  --color-profound-surface: #0A0A0A;
-  --color-profound-card: #141414;
-  --color-profound-border: #1F1F1F;
-  --color-profound-muted: #A1A1AA;
-  --color-profound-light: #E5E7EB;
+  --color-profound-blue: #376CFF;
+  --color-profound-surface: #FAFAFA;
+  --color-profound-card: #FFFFFF;
+  --color-profound-border: #E5E7EB;
+  --color-profound-muted: #6B7280;
+  --color-profound-light: #111827;
 }
 
 @layer base {
   body {
-    @apply bg-black text-white font-sans antialiased;
+    @apply bg-white text-gray-900 font-sans antialiased;
   }
 }

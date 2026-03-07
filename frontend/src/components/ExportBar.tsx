@@ -3,9 +3,10 @@ import { useState } from 'react';
 interface ExportBarProps {
   markdown: string;
   onRegenerate: () => void;
+  exportDisabled?: boolean;
 }
 
-export default function ExportBar({ markdown, onRegenerate }: ExportBarProps) {
+export default function ExportBar({ markdown, onRegenerate, exportDisabled }: ExportBarProps) {
   const [copied, setCopied] = useState(false);
 
   const downloadFile = (filename: string) => {
@@ -28,25 +29,28 @@ export default function ExportBar({ markdown, onRegenerate }: ExportBarProps) {
     <div className="flex flex-wrap gap-3">
       <button
         onClick={() => downloadFile('llms.txt')}
-        className="border border-profound-border text-white rounded-lg px-6 py-2.5 hover:bg-profound-card transition-colors"
+        disabled={exportDisabled}
+        className="border border-profound-border text-gray-700 rounded-lg px-6 py-2.5 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       >
         Download .txt
       </button>
       <button
         onClick={() => downloadFile('llms.md')}
-        className="border border-profound-border text-white rounded-lg px-6 py-2.5 hover:bg-profound-card transition-colors"
+        disabled={exportDisabled}
+        className="border border-profound-border text-gray-700 rounded-lg px-6 py-2.5 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       >
         Download .md
       </button>
       <button
         onClick={copyToClipboard}
-        className="border border-profound-border text-white rounded-lg px-6 py-2.5 hover:bg-profound-card transition-colors"
+        disabled={exportDisabled}
+        className="border border-profound-border text-gray-700 rounded-lg px-6 py-2.5 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       >
         {copied ? 'Copied!' : 'Copy'}
       </button>
       <button
         onClick={onRegenerate}
-        className="border border-profound-border text-white rounded-lg px-6 py-2.5 hover:bg-profound-card transition-colors"
+        className="border border-profound-border text-gray-700 rounded-lg px-6 py-2.5 hover:bg-gray-50 transition-colors"
       >
         Regenerate
       </button>

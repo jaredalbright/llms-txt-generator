@@ -14,8 +14,8 @@ export default function Preview({ markdown }: PreviewProps) {
         <span className="text-sm font-medium text-profound-muted">Preview</span>
       </div>
       <div
-        className="flex-1 p-4 prose prose-invert prose-sm max-w-none overflow-auto
-          prose-headings:text-white prose-a:text-profound-yellow prose-blockquote:border-profound-yellow"
+        className="flex-1 p-4 prose prose-sm max-w-none overflow-auto
+          prose-headings:text-gray-900 prose-a:text-profound-blue prose-blockquote:border-profound-blue"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </div>

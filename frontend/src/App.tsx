@@ -17,6 +17,9 @@ export default function App() {
     progress,
     error,
     isReprompting,
+    isValidating,
+    isValid,
+    validationIssues,
   } = useJob();
 
   const isLoading = status === 'crawling' || status === 'processing' || status === 'pending';
@@ -30,8 +33,8 @@ export default function App() {
 
         {/* Error display */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
-            <p className="text-red-400 text-sm">{error}</p>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <p className="text-red-600 text-sm">{error}</p>
           </div>
         )}
 
@@ -52,8 +55,23 @@ export default function App() {
             {/* Reprompt */}
             <RepromptBar onSubmit={reprompt} disabled={isReprompting} />
 
+            {/* Validation status */}
+            {isValidating && (
+              <p className="text-sm text-profound-muted">Validating...</p>
+            )}
+            {!isValidating && !isValid && validationIssues.length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-1">
+                <p className="text-red-600 text-sm font-medium">Validation issues found:</p>
+                {validationIssues.map((issue, i) => (
+                  <p key={i} className="text-sm text-red-600">
+                    Line {issue.line}: {issue.message}
+                  </p>
+                ))}
+              </div>
+            )}
+
             {/* Export */}
-            <ExportBar markdown={markdown} onRegenerate={regenerate} />
+            <ExportBar markdown={markdown} onRegenerate={regenerate} exportDisabled={isValidating || !isValid} />
           </>
         )}
       </div>
