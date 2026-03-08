@@ -8,7 +8,7 @@ def validate_llms_txt(markdown: str) -> list[ValidationIssue]:
 
     Checks:
     1. Must start with H1 (# Site Name)
-    2. Should have a blockquote summary (> ...)
+    2. Should have a blockquote description (> ...)
     3. No H2 before any body text/blockquote
     4. H2 sections should contain link lists
     5. Links should be in [name](url) format
@@ -35,7 +35,7 @@ def validate_llms_txt(markdown: str) -> list[ValidationIssue]:
         issues.append(ValidationIssue(
             line=2,
             severity="warning",
-            message="Missing blockquote summary (> description)"
+            message="Missing blockquote description (> description)"
         ))
 
     # Check for forbidden headings (H3+)

@@ -32,6 +32,10 @@ class RepromptResponse(BaseModel):
     markdown: str
 
 
+class DownloadRequest(BaseModel):
+    markdown: str
+
+
 class ValidateRequest(BaseModel):
     markdown: str
 

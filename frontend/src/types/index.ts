@@ -50,3 +50,14 @@ export interface PageMeta {
   description: string;
   h1: string;
 }
+
+export type PipelineStep = 'crawl' | 'metadata' | 'ai_categorize' | 'fetch_content' | 'assemble';
+export type StepState = 'pending' | 'active' | 'completed';
+
+export interface StepInfo {
+  step: PipelineStep;
+  state: StepState;
+  message: string;
+  summary?: string;
+  details: string[];
+}

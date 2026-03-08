@@ -26,7 +26,7 @@ class MockLLMProvider:
             })
         return {
             "site_name": domain,
-            "summary": f"A website at {domain}.",
-            "context": None,
+            "description": f"A website at {domain}.",
+            "details": None,
             "sections": sections,
         }

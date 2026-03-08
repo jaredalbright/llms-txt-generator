@@ -14,7 +14,7 @@ export function useJob() {
   const appliedResultRef = useRef<string | null>(null);
   const validatedMarkdownRef = useRef<string | null>(null);
 
-  const { status, progress, result, error } = useSSE(jobId);
+  const { status, progress, result, error, steps } = useSSE(jobId);
 
   // When SSE completes, apply result markdown only once
   if (result && result.markdown && status === 'completed' && appliedResultRef.current !== result.markdown) {
@@ -110,5 +110,6 @@ export function useJob() {
     isValid,
     validationIssues,
     jobId,
+    steps,
   };
 }

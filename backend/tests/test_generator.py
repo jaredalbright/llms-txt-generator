@@ -4,8 +4,8 @@ from app.services.generator import assemble_base_markdown
 def test_basic_assembly():
     data = {
         "site_name": "Example Corp",
-        "summary": "A platform for building things.",
-        "context": None,
+        "description": "A platform for building things.",
+        "details": None,
         "sections": [
             {
                 "name": "Docs",
@@ -28,11 +28,11 @@ def test_basic_assembly():
     assert "- [Getting Started](https://example.com/docs/start): How to get started" in result
 
 
-def test_assembly_with_context():
+def test_assembly_with_details():
     data = {
         "site_name": "Test Site",
-        "summary": "A test site.",
-        "context": "This site has additional context.",
+        "description": "A test site.",
+        "details": "This site has additional details.",
         "sections": [],
     }
 
@@ -40,14 +40,14 @@ def test_assembly_with_context():
 
     assert "# Test Site" in result
     assert "> A test site." in result
-    assert "This site has additional context." in result
+    assert "This site has additional details." in result
 
 
 def test_assembly_no_description():
     data = {
         "site_name": "Minimal",
-        "summary": None,
-        "context": None,
+        "description": None,
+        "details": None,
         "sections": [
             {
                 "name": "Pages",

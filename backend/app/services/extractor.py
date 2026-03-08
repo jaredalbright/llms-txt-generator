@@ -2,11 +2,12 @@ import logging
 import httpx
 from bs4 import BeautifulSoup
 from app.models import PageMeta
+from app.services.progress import StepProgressReporter
 
 logger = logging.getLogger("app.extractor")
 
 
-async def extract_metadata(urls: list[str]) -> list[PageMeta]:
+async def extract_metadata(urls: list[str], reporter: StepProgressReporter | None = None) -> list[PageMeta]:
     """
     Fetch each URL and extract title, meta description, h1.
     Uses concurrent requests for speed.
@@ -49,12 +50,16 @@ async def extract_metadata(urls: list[str]) -> list[PageMeta]:
                 if h1_tag:
                     h1 = h1_tag.get_text(strip=True)
 
+                display_title = title or h1 or url
                 pages.append(PageMeta(
                     url=url,
-                    title=title or h1 or url,
+                    title=display_title,
                     description=description,
                     h1=h1,
                 ))
+
+                if reporter:
+                    await reporter.log(display_title, message=f"Extracting metadata {i + 1}/{len(urls)}...")
 
             except Exception as e:
                 logger.warning("  [%d/%d] Failed %s: %s", i + 1, len(urls), url, e)

@@ -4,6 +4,7 @@ import httpx
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 from app.models import ChildPageContent
+from app.services.progress import StepProgressReporter
 
 logger = logging.getLogger("app.content_fetcher")
 
@@ -44,7 +45,7 @@ async def fetch_and_convert(url: str, client: httpx.AsyncClient) -> ChildPageCon
 
 async def fetch_child_pages(
     urls: list[str],
-    progress_queue: asyncio.Queue,
+    reporter: StepProgressReporter | None = None,
     concurrency: int = 5,
 ) -> list[ChildPageContent]:
     """Fetch multiple child pages concurrently with progress reporting."""
@@ -59,12 +60,12 @@ async def fetch_child_pages(
             async with httpx.AsyncClient() as client:
                 result = await fetch_and_convert(url, client)
                 completed += 1
-                await progress_queue.put({
-                    "type": "progress",
-                    "status": "extracting_content",
-                    "message": f"Extracting content {completed}/{total}...",
-                    "pages_found": total,
-                })
+                if reporter:
+                    content_size = len(result.markdown_content) if result else 0
+                    await reporter.log(
+                        f"{url} — {content_size} chars" if result else f"{url} — failed",
+                        message=f"Fetching content {completed}/{total}...",
+                    )
                 return result
 
     tasks = [fetch_one(url) for url in urls]

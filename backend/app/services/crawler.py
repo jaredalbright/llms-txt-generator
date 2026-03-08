@@ -4,11 +4,12 @@ from xml.etree import ElementTree
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from app.config import settings
+from app.services.progress import StepProgressReporter
 
 logger = logging.getLogger("app.crawler")
 
 
-async def crawl_site(url: str) -> list[str]:
+async def crawl_site(url: str, reporter: StepProgressReporter | None = None) -> list[str]:
     """
     Discover URLs for the given site.
     Strategy:
@@ -25,8 +26,12 @@ async def crawl_site(url: str) -> list[str]:
     if sitemap_urls:
         logger.info("Sitemap returned %d URLs", len(sitemap_urls))
         discovered.update(sitemap_urls)
+        if reporter:
+            await reporter.log(f"Sitemap: {len(sitemap_urls)} URLs")
     else:
         logger.debug("No sitemap found or empty")
+        if reporter:
+            await reporter.log("No sitemap found, falling back to link crawl")
 
     # --- Fallback: crawl from homepage ---
     if len(discovered) < 5:
@@ -34,6 +39,8 @@ async def crawl_site(url: str) -> list[str]:
         crawled = await _crawl_links(url, base_domain, max_depth=2)
         logger.info("Link crawl returned %d URLs", len(crawled))
         discovered.update(crawled)
+        if reporter:
+            await reporter.log(f"Link crawl: {len(crawled)} URLs from homepage")
 
     # Always include the homepage
     discovered.add(url.rstrip("/"))
