@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 
 interface SSEProgress {
-  status: 'crawling' | 'processing' | 'completed' | 'error';
+  status: 'crawling' | 'processing' | 'extracting_content' | 'summarizing' | 'completed' | 'error';
   pages_found?: number;
   message?: string;
 }

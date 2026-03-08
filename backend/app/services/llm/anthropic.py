@@ -56,3 +56,6 @@ class AnthropicProvider(LLMProvider):
         result = response.content[0].text.strip()
         logger.info("Reprompt complete: %d chars returned", len(result))
         return result
+
+    async def summarize(self, llms_ctx: str, site_url: str, current_structured_data: dict) -> dict:
+        raise NotImplementedError("Summarize not yet implemented for this provider")

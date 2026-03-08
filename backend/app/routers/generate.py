@@ -1,8 +1,11 @@
 import asyncio
+import io
 import json
 import logging
 import uuid
+import zipfile
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 from app.models import (
     GenerateRequest,
@@ -12,13 +15,12 @@ from app.models import (
 )
 from app.services.pipeline import run_pipeline
 from app.services.llm.factory import get_llm_provider
+from app.services.generator import slugify
 
 logger = logging.getLogger("app.router.generate")
 
 router = APIRouter()
 
-# In-memory job store — replace with Supabase in production
-# Key: job_id, Value: { status, pages_found, markdown, error, events: asyncio.Queue }
 jobs: dict[str, dict] = {}
 
 
@@ -33,13 +35,15 @@ async def create_job(req: GenerateRequest):
         "client_info": req.client_info,
         "pages_found": 0,
         "markdown": None,
+        "markdown_md": None,
+        "llms_ctx": None,
+        "child_pages": [],
         "error": None,
         "event_queue": event_queue,
     }
 
     logger.info("Job %s created for URL: %s (client_info: %s)", job_id, req.url, "yes" if req.client_info else "no")
 
-    # Run on the event loop so it shares the same queue as the SSE endpoint
     asyncio.create_task(run_pipeline(job_id, str(req.url), jobs))
 
     return GenerateResponse(job_id=job_id)
@@ -83,7 +87,7 @@ async def stream_job(job_id: str):
                         "job_id": job_id,
                     }),
                 }
-                return  # Close the stream
+                return
 
             elif event_type == "error":
                 logger.error("SSE error for job %s: %s", job_id, event["message"])
@@ -96,6 +100,53 @@ async def stream_job(job_id: str):
                 return
 
     return EventSourceResponse(event_generator(), ping=15)
+
+
+@router.get("/generate/{job_id}/download.zip")
+async def download_zip(job_id: str):
+    """Download full archive: /base/llms.txt, /md/llms.txt, /llms-ctx.txt, and individual .md files."""
+    if job_id not in jobs:
+        return {"error": "Job not found"}
+
+    job = jobs[job_id]
+    if job["status"] != "completed":
+        return {"error": "Job not completed"}
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # Base llms.txt (original URLs)
+        if job.get("markdown"):
+            zf.writestr("base/llms.txt", job["markdown"])
+
+        # MD llms.txt (.md file URLs)
+        if job.get("markdown_md"):
+            zf.writestr("md/llms.txt", job["markdown_md"])
+
+        # llms-ctx.txt (expanded context)
+        if job.get("llms_ctx"):
+            zf.writestr("llms-ctx.txt", job["llms_ctx"])
+
+        # Individual .md files
+        child_pages = job.get("child_pages", [])
+        seen_names: set[str] = set()
+        for cp in child_pages:
+            name = slugify(cp.title if hasattr(cp, 'title') else cp['title'])
+            base_name = name
+            counter = 1
+            while name in seen_names:
+                name = f"{base_name}-{counter}"
+                counter += 1
+            seen_names.add(name)
+
+            content = cp.markdown_content if hasattr(cp, 'markdown_content') else cp['markdown_content']
+            zf.writestr(f"md/{name}.md", content)
+
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=llms-txt.zip"},
+    )
 
 
 @router.post("/reprompt", response_model=RepromptResponse)

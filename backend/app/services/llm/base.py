@@ -37,3 +37,13 @@ class LLMProvider(ABC):
         return the modified markdown.
         """
         pass
+
+    @abstractmethod
+    async def summarize(
+        self, llms_ctx: str, site_url: str, current_structured_data: dict
+    ) -> dict:
+        """
+        Given the expanded llms-ctx content, the site URL, and the current structured data,
+        return improved structured data with better descriptions from actual page content.
+        """
+        pass

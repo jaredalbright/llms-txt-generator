@@ -20,9 +20,10 @@ export default function App() {
     isValidating,
     isValid,
     validationIssues,
+    jobId,
   } = useJob();
 
-  const isLoading = status === 'crawling' || status === 'processing' || status === 'pending';
+  const isLoading = status === 'crawling' || status === 'processing' || status === 'pending' || status === 'extracting_content' || status === 'summarizing';
   const isComplete = status === 'completed' && markdown;
 
   return (
@@ -71,7 +72,12 @@ export default function App() {
             )}
 
             {/* Export */}
-            <ExportBar markdown={markdown} onRegenerate={regenerate} exportDisabled={isValidating || !isValid} />
+            <ExportBar
+              markdown={markdown}
+              jobId={jobId || undefined}
+              onRegenerate={regenerate}
+              exportDisabled={isValidating || !isValid}
+            />
           </>
         )}
       </div>

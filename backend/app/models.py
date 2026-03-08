@@ -6,6 +6,8 @@ from enum import Enum
 class JobStatus(str, Enum):
     PENDING = "pending"
     CRAWLING = "crawling"
+    EXTRACTING_CONTENT = "extracting_content"
+    SUMMARIZING = "summarizing"
     PROCESSING = "processing"
     COMPLETED = "completed"
     ERROR = "error"
@@ -45,8 +47,16 @@ class ValidateResponse(BaseModel):
     issues: list[ValidationIssue]
 
 
+class ChildPageContent(BaseModel):
+    url: str
+    title: str
+    markdown_content: str
+
+
 class PageMeta(BaseModel):
     url: str
     title: str
     description: str
     h1: Optional[str] = None
+    uuid: Optional[str] = None
+    parent_uuid: Optional[str] = None
