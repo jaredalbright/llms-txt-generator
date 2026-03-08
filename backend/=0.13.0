@@ -1,0 +1,8 @@
+Requirement already satisfied: markdownify in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (1.2.2)
+Requirement already satisfied: beautifulsoup4<5,>=4.9 in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (from markdownify) (4.14.3)
+Requirement already satisfied: six<2,>=1.15 in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (from markdownify) (1.17.0)
+Requirement already satisfied: soupsieve>=1.6.1 in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (from beautifulsoup4<5,>=4.9->markdownify) (2.8.3)
+Requirement already satisfied: typing-extensions>=4.0.0 in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (from beautifulsoup4<5,>=4.9->markdownify) (4.15.0)
+
+[notice] A new release of pip is available: 25.0 -> 26.0.1
+[notice] To update, run: pip install --upgrade pip

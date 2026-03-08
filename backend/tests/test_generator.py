@@ -1,4 +1,4 @@
-from app.services.generator import assemble_markdown
+from app.services.generator import assemble_base_markdown
 
 
 def test_basic_assembly():
@@ -20,7 +20,7 @@ def test_basic_assembly():
         ],
     }
 
-    result = assemble_markdown(data)
+    result = assemble_base_markdown(data)
 
     assert result.startswith("# Example Corp\n")
     assert "> A platform for building things." in result
@@ -36,7 +36,7 @@ def test_assembly_with_context():
         "sections": [],
     }
 
-    result = assemble_markdown(data)
+    result = assemble_base_markdown(data)
 
     assert "# Test Site" in result
     assert "> A test site." in result
@@ -58,7 +58,7 @@ def test_assembly_no_description():
         ],
     }
 
-    result = assemble_markdown(data)
+    result = assemble_base_markdown(data)
 
     assert "- [Home](https://example.com)" in result
     assert ": " not in result.split("- [Home]")[1].split("\n")[0]

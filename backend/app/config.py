@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # Crawl
     max_pages: int = 50
     crawl_timeout: int = 30                    # seconds per page
+    content_fetch_concurrency: int = 5
 
     # App
     frontend_url: str = "http://localhost:5173"

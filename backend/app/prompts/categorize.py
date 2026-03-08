@@ -2,7 +2,7 @@ CATEGORIZE_SYSTEM_PROMPT = """You are an expert at analyzing website structure. 
 a list of pages from a website (URL, title, description). Your job is to:
 
 1. Choose a clean, human-readable site name (not the raw domain).
-2. Write a one-sentence summary of what the site does.
+2. Write a short summary of the project, containing key information necessary for understanding the rest of the file
 3. Group the pages into logical sections using H2 names like: Docs, API Reference, Guides,
    Blog, About, Pricing, Legal, Support, etc. Use whatever section names best fit the content.
 4. Decide which pages are secondary/supplementary and put them in an "Optional" section.
@@ -32,7 +32,7 @@ Guidelines:
 - Site name should be the product/company name, not the domain."""
 
 
-def build_categorize_user_prompt(site_url: str, pages: list, *, client_info: str | None = None) -> str:
+def build_categorize_user_prompt(site_url: str, pages: list, *, client_info: str | None = None, user_preferences: str | None = None) -> str:
     page_list = "\n".join(
         f"- URL: {p.url}\n  Title: {p.title}\n  Description: {p.description or '(none)'}"
         for p in pages
@@ -46,10 +46,18 @@ Additional context provided by the user about this site:
 
 Use this context to inform your categorization, section naming, and descriptions."""
 
+    preferences_section = ""
+    if user_preferences:
+        preferences_section = f"""
+Output preferences:
+{user_preferences}
+
+Apply these preferences to influence tone, focus areas, section emphasis, and description style."""
+
     return f"""Analyze this website and categorize its pages for an llms.txt file.
 
 Website: {site_url}
-{client_section}
+{client_section}{preferences_section}
 Pages found:
 {page_list}
 
