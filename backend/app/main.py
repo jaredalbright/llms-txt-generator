@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import generate, validate
 from app.config import settings
 from app.db import InMemoryJobRepository, init_job_repo
+from app.db import InMemoryGenerationStore, init_generation_store
 
 # Configure root logger
 logging.basicConfig(
@@ -24,6 +25,7 @@ logger = logging.getLogger("app")
 app = FastAPI(title="llms.txt Generator API")
 
 init_job_repo(InMemoryJobRepository())
+init_generation_store(InMemoryGenerationStore())
 
 app.add_middleware(
     CORSMiddleware,
