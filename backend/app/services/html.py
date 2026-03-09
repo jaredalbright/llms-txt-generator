@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 
 from app.models import PageMeta, ChildPageContent
+from app.services.url_utils import normalize_url
 
 logger = logging.getLogger("app.services.html")
 
@@ -20,10 +21,41 @@ def extract_links(html: str, base_url: str, base_domain: str) -> set[str]:
         parsed = urlparse(full_url)
 
         if parsed.netloc == base_domain:
-            clean = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip("/")
-            found.add(clean)
+            found.add(normalize_url(full_url))
 
     return found
+
+
+def extract_nav_links(html: str, base_url: str, base_domain: str) -> set[str]:
+    """Extract same-domain <a href> links from <nav> elements only."""
+    soup = BeautifulSoup(html, "lxml")
+    found: set[str] = set()
+
+    for nav in soup.find_all("nav"):
+        for a in nav.find_all("a", href=True):
+            href = a["href"]
+            full_url = urljoin(base_url, href)
+            parsed = urlparse(full_url)
+
+            if parsed.netloc == base_domain:
+                found.add(normalize_url(full_url))
+
+    return found
+
+
+def extract_first_paragraph(soup: BeautifulSoup, max_chars: int = 200) -> str:
+    """Find first meaningful <p> in main/article/body with >20 chars text."""
+    containers = [soup.find("main"), soup.find("article"), soup.find("body")]
+    for container in containers:
+        if container is None:
+            continue
+        for p in container.find_all("p"):
+            text = p.get_text(strip=True)
+            if len(text) > 20:
+                if len(text) > max_chars:
+                    return text[:max_chars] + "..."
+                return text
+    return ""
 
 
 def extract_page_metadata(html: str, url: str) -> PageMeta | None:
@@ -43,6 +75,9 @@ def extract_page_metadata(html: str, url: str) -> PageMeta | None:
         og_desc = soup.find("meta", attrs={"property": "og:description"})
         if og_desc and og_desc.get("content"):
             description = og_desc["content"].strip()
+
+    if not description:
+        description = extract_first_paragraph(soup)
 
     h1 = ""
     h1_tag = soup.find("h1")

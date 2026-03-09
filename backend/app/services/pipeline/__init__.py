@@ -11,7 +11,7 @@ from app.services.pipeline.nodes import (
     ExtractMetadataNode,
     CategorizeNode,
     FetchChildrenNode,
-    BuildContextNode,
+    SummarizeNode,
     AssembleNode,
 )
 
@@ -23,8 +23,8 @@ def build_default_dag() -> PipelineDAG:
 
     DAG structure:
         crawl ──────────> extract_metadata ──┐
-                                              ├──> categorize ──> fetch_children ──┬──> build_context
-        fetch_homepage ──────────────────────┘                                      └──> assemble
+                                              ├──> categorize ──> fetch_children ──> summarize ──> assemble
+        fetch_homepage ──────────────────────┘
     """
     dag = PipelineDAG()
     dag.add_node(CrawlNode())
@@ -32,8 +32,8 @@ def build_default_dag() -> PipelineDAG:
     dag.add_node(ExtractMetadataNode(), depends_on=["crawl"])
     dag.add_node(CategorizeNode(), depends_on=["metadata", "fetch_homepage"])
     dag.add_node(FetchChildrenNode(), depends_on=["ai_categorize"])
-    dag.add_node(BuildContextNode(), depends_on=["fetch_content"])
-    dag.add_node(AssembleNode(), depends_on=["fetch_content"])
+    dag.add_node(SummarizeNode(), depends_on=["fetch_content"])
+    dag.add_node(AssembleNode(), depends_on=["summarize"])
     return dag
 
 

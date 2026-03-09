@@ -31,6 +31,12 @@ class Generation:
     # Fetched child page content (list[ChildPageContent])
     child_pages: list = dataclasses.field(default_factory=list)
 
+    # HTML cache: url -> raw HTML (avoids re-fetching pages)
+    _html_cache: dict[str, str] = dataclasses.field(default_factory=dict)
+
+    # URL discovery metadata: url -> {"source": str, "depth": int, "inlink_count": int}
+    url_metadata: dict[str, dict] = dataclasses.field(default_factory=dict)
+
     # Expanded context document
     llms_ctx: str | None = None
 

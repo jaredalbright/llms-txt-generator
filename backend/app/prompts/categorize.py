@@ -165,11 +165,16 @@ def build_categorize_user_prompt(
     user_preferences: str | None = None,
     homepage_markdown: str | None = None,
     use_tool_mode: bool = False,
+    url_metadata: dict[str, dict] | None = None,
 ) -> str:
-    page_list = "\n".join(
-        f"- URL: {p.url}\n  Title: {p.title}\n  Description: {p.description or '(none)'}"
-        for p in pages
-    )
+    lines = []
+    for p in pages:
+        entry = f"- URL: {p.url}\n  Title: {p.title}\n  Description: {p.description or '(none)'}"
+        if url_metadata and p.url in url_metadata:
+            meta = url_metadata[p.url]
+            entry += f"\n  Source: {meta.get('source', 'unknown')} | Depth: {meta.get('depth', '?')} | Inlinks: {meta.get('inlink_count', 0)}"
+        lines.append(entry)
+    page_list = "\n".join(lines)
 
     client_section = ""
     if client_info:

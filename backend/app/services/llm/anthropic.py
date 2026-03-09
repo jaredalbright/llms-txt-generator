@@ -13,6 +13,7 @@ from app.prompts.categorize import (
     build_categorize_user_prompt,
     search_homepage_content,
 )
+from app.prompts.summarize import SUMMARIZE_SYSTEM_PROMPT, SUMMARIZE_USER_PROMPT
 
 
 logger = logging.getLogger("app.llm.anthropic")
@@ -100,6 +101,7 @@ class AnthropicProvider(LLMProvider):
         *,
         client_info: str | None = None,
         homepage_markdown: str | None = None,
+        url_metadata: dict | None = None,
         reporter: StepProgressReporter | None = None,
     ) -> dict:
         use_tool_mode = (
@@ -112,6 +114,7 @@ class AnthropicProvider(LLMProvider):
             client_info=client_info,
             homepage_markdown=homepage_markdown,
             use_tool_mode=use_tool_mode,
+            url_metadata=url_metadata,
         )
         system_prompt = CATEGORIZE_SYSTEM_PROMPT_WITH_TOOL if use_tool_mode else CATEGORIZE_SYSTEM_PROMPT
 
@@ -187,5 +190,32 @@ class AnthropicProvider(LLMProvider):
         logger.info("Categorization complete (fallback): %d sections", len(result.get("sections", [])))
         return result
 
-    async def summarize(self, llms_ctx: str, site_url: str, current_structured_data: dict) -> dict:
-        raise NotImplementedError("Summarize not yet implemented for this provider")
+    async def summarize(
+        self,
+        llms_ctx: str,
+        site_url: str,
+        current_structured_data: dict,
+        *,
+        reporter: StepProgressReporter | None = None,
+    ) -> dict:
+        import json as _json
+
+        user_prompt = SUMMARIZE_USER_PROMPT.format(
+            site_url=site_url,
+            llms_ctx=llms_ctx,
+            current_structured_data=_json.dumps(current_structured_data, indent=2),
+        )
+
+        logger.info("Summarize pass for %s (%d chars context)", site_url, len(llms_ctx))
+
+        response = await self._stream_to_text(
+            system=SUMMARIZE_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
+            reporter=reporter,
+        )
+
+        text = response.content[0].text
+        logger.debug("Summarize response (%d chars): %s", len(text), text[:200])
+        result = _extract_json(text)
+        logger.info("Summarize complete: %d sections", len(result.get("sections", [])))
+        return result

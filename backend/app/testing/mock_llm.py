@@ -30,3 +30,8 @@ class MockLLMProvider:
             "details": None,
             "sections": sections,
         }
+
+    @staticmethod
+    def mock_summarize(current_structured_data: dict) -> dict:
+        """Return structured data unchanged (mock does not refine descriptions)."""
+        return current_structured_data

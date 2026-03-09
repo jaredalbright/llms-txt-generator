@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     content_fetch_concurrency: int = 5
     homepage_content_threshold: int = 10000    # chars; above this, LLM uses tool to search
 
+    # BFS crawl
+    bfs_max_level1_urls: int = 20
+
     # App
     frontend_url: str = "http://localhost:5173"
     mock_llm: bool = True                     # Skip real LLM calls, return fixture data
