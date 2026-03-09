@@ -11,7 +11,7 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def categorize_pages(
-        self, site_url: str, pages: list[PageMeta], *, client_info: str | None = None, homepage_markdown: str | None = None, url_metadata: dict | None = None, reporter: StepProgressReporter | None = None
+        self, site_url: str, pages: list[PageMeta], *, client_info: str | None = None, homepage_markdown: str | None = None, url_metadata: dict | None = None, prompts_context: list[str] | None = None, reporter: StepProgressReporter | None = None
     ) -> dict:
         """
         Given a site URL and list of page metadata, return structured data:
@@ -31,7 +31,7 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def summarize(
-        self, llms_ctx: str, site_url: str, current_structured_data: dict, *, reporter: StepProgressReporter | None = None
+        self, llms_ctx: str, site_url: str, current_structured_data: dict, *, prompts_context: list[str] | None = None, reporter: StepProgressReporter | None = None
     ) -> dict:
         """
         Given the expanded llms-ctx content, the site URL, and the current structured data,

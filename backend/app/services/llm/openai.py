@@ -7,7 +7,7 @@ from app.services.progress import StepProgressReporter
 from app.models import PageMeta
 from app.config import settings
 from app.prompts.categorize import CATEGORIZE_SYSTEM_PROMPT, build_categorize_user_prompt
-from app.prompts.summarize import SUMMARIZE_SYSTEM_PROMPT, SUMMARIZE_USER_PROMPT
+from app.prompts.summarize import SUMMARIZE_SYSTEM_PROMPT, build_summarize_user_prompt
 
 
 logger = logging.getLogger("app.llm.openai")
@@ -83,6 +83,7 @@ class OpenAIProvider(LLMProvider):
         client_info: str | None = None,
         homepage_markdown: str | None = None,
         url_metadata: dict | None = None,
+        prompts_context: list[str] | None = None,
         reporter: StepProgressReporter | None = None,
     ) -> dict:
         # OpenAI: always inline homepage content (truncated if too large)
@@ -93,6 +94,7 @@ class OpenAIProvider(LLMProvider):
             client_info=client_info,
             homepage_markdown=homepage_markdown,
             url_metadata=url_metadata,
+            prompts_context=prompts_context,
         )
         logger.info("Categorizing %d pages for %s (client_info: %s)", len(pages), site_url, "yes" if client_info else "no")
         logger.debug("Prompt length: %d chars", len(user_prompt))
@@ -114,12 +116,14 @@ class OpenAIProvider(LLMProvider):
         site_url: str,
         current_structured_data: dict,
         *,
+        prompts_context: list[str] | None = None,
         reporter: StepProgressReporter | None = None,
     ) -> dict:
-        user_prompt = SUMMARIZE_USER_PROMPT.format(
+        user_prompt = build_summarize_user_prompt(
             site_url=site_url,
             llms_ctx=llms_ctx,
             current_structured_data=json.dumps(current_structured_data, indent=2),
+            prompts_context=prompts_context,
         )
 
         logger.info("Summarize pass for %s (%d chars context)", site_url, len(llms_ctx))

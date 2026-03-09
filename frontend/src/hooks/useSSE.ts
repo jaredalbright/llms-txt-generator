@@ -16,7 +16,7 @@ interface SSEResult {
   job_id: string;
 }
 
-const STEP_ORDER: PipelineStep[] = ['crawl', 'metadata', 'ai_categorize', 'fetch_content', 'assemble'];
+const STEP_ORDER: PipelineStep[] = ['crawl', 'metadata', 'fetch_homepage', 'ai_categorize', 'fetch_content', 'summarize', 'assemble'];
 
 export function useSSE(jobId: string | null) {
   const [status, setStatus] = useState<SSEProgress['status'] | null>(null);

@@ -37,7 +37,7 @@ def build_default_dag() -> PipelineDAG:
     return dag
 
 
-async def run_pipeline(job_id: str, url: str, repo: JobRepository):
+async def run_pipeline(job_id: str, url: str, repo: JobRepository, prompts_context: list[str] | None = None):
     """Execute the generation pipeline as a DAG of nodes."""
     job = await repo.get(job_id)
     queue: asyncio.Queue = job.event_queue
@@ -49,6 +49,7 @@ async def run_pipeline(job_id: str, url: str, repo: JobRepository):
         generation_id=job_id,
         url=url,
         client_info=job.client_info,
+        prompts_context=prompts_context,
     )
 
     try:

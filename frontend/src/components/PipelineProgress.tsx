@@ -4,8 +4,10 @@ import type { StepInfo, PipelineStep } from '../types';
 const STEP_LABELS: Record<PipelineStep, string> = {
   crawl: 'Discovering Pages',
   metadata: 'Extracting Metadata',
+  fetch_homepage: 'Fetching Homepage',
   ai_categorize: 'AI Analysis',
   fetch_content: 'Fetching Content',
+  summarize: 'Refining Descriptions',
   assemble: 'Building Output',
 };
 
@@ -217,7 +219,7 @@ function StepRow({ step }: { step: StepInfo }) {
             )}
             <DetailLog
               details={step.details}
-              isAI={step.step === 'ai_categorize'}
+              isAI={step.step === 'ai_categorize' || step.step === 'summarize'}
               isActive={step.state === 'active'}
             />
           </div>

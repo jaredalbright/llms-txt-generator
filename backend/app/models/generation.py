@@ -15,6 +15,7 @@ class Generation:
     id: str
     url: str
     client_info: str | None = None
+    prompts_context: list[str] = dataclasses.field(default_factory=list)
 
     # Crawl output
     discovered_urls: list[str] = dataclasses.field(default_factory=list)

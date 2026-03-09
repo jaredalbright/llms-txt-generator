@@ -13,7 +13,7 @@ from app.prompts.categorize import (
     build_categorize_user_prompt,
     search_homepage_content,
 )
-from app.prompts.summarize import SUMMARIZE_SYSTEM_PROMPT, SUMMARIZE_USER_PROMPT
+from app.prompts.summarize import SUMMARIZE_SYSTEM_PROMPT, build_summarize_user_prompt
 
 
 logger = logging.getLogger("app.llm.anthropic")
@@ -102,6 +102,7 @@ class AnthropicProvider(LLMProvider):
         client_info: str | None = None,
         homepage_markdown: str | None = None,
         url_metadata: dict | None = None,
+        prompts_context: list[str] | None = None,
         reporter: StepProgressReporter | None = None,
     ) -> dict:
         use_tool_mode = (
@@ -115,6 +116,7 @@ class AnthropicProvider(LLMProvider):
             homepage_markdown=homepage_markdown,
             use_tool_mode=use_tool_mode,
             url_metadata=url_metadata,
+            prompts_context=prompts_context,
         )
         system_prompt = CATEGORIZE_SYSTEM_PROMPT_WITH_TOOL if use_tool_mode else CATEGORIZE_SYSTEM_PROMPT
 
@@ -196,14 +198,16 @@ class AnthropicProvider(LLMProvider):
         site_url: str,
         current_structured_data: dict,
         *,
+        prompts_context: list[str] | None = None,
         reporter: StepProgressReporter | None = None,
     ) -> dict:
         import json as _json
 
-        user_prompt = SUMMARIZE_USER_PROMPT.format(
+        user_prompt = build_summarize_user_prompt(
             site_url=site_url,
             llms_ctx=llms_ctx,
             current_structured_data=_json.dumps(current_structured_data, indent=2),
+            prompts_context=prompts_context,
         )
 
         logger.info("Summarize pass for %s (%d chars context)", site_url, len(llms_ctx))

@@ -18,6 +18,7 @@ class JobStatus(str, Enum):
 class GenerateRequest(BaseModel):
     url: HttpUrl
     client_info: Optional[str] = None
+    prompts_context: Optional[list[str]] = None
 
 
 class GenerateResponse(BaseModel):
@@ -64,6 +65,7 @@ class Job:
     status: str
     url: str
     client_info: str | None = None
+    prompts_context: list[str] | None = None
     pages_found: int = 0
     markdown: str | None = None
     markdown_md: str | None = None

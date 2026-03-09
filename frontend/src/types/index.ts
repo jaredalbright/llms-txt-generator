@@ -13,6 +13,31 @@ export interface Job {
 export interface GenerateRequest {
   url: string;
   client_info?: string;
+  prompts_context?: string[];
+}
+
+// Profound API types
+export interface ProfoundAsset {
+  id: string;
+  name: string;
+  website: string;
+  logo_url: string;
+  category: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface ProfoundPrompt {
+  id: string;
+  prompt_type: string;
+  prompt: string;
+  topic: {
+    id: string;
+    name: string;
+  };
+  tags: { id: string; name: string }[];
+  platforms: { id: string; name: string }[];
 }
 
 export interface GenerateResponse {
@@ -41,7 +66,7 @@ export interface PageMeta {
   h1: string;
 }
 
-export type PipelineStep = 'crawl' | 'metadata' | 'ai_categorize' | 'fetch_content' | 'assemble';
+export type PipelineStep = 'crawl' | 'metadata' | 'fetch_homepage' | 'ai_categorize' | 'fetch_content' | 'summarize' | 'assemble';
 export type StepState = 'pending' | 'active' | 'completed';
 
 export interface StepInfo {
