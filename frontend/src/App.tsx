@@ -15,11 +15,9 @@ export default function App() {
   const [mode, setMode] = useSessionState<InputMode>('app_input_mode', 'url');
   const {
     submitJob,
-    regenerate,
     markdown,
     setMarkdown,
     status,
-    progress,
     error,
     steps,
     isValidating,

@@ -85,11 +85,10 @@ function PostDownloadModal({ onClose }: { onClose: () => void }) {
 interface ExportBarProps {
   markdown: string;
   jobId?: string;
-  onRegenerate: () => void;
   exportDisabled?: boolean;
 }
 
-export default function ExportBar({ markdown, jobId, onRegenerate, exportDisabled }: ExportBarProps) {
+export default function ExportBar({ markdown, jobId, exportDisabled }: ExportBarProps) {
   const [copied, setCopied] = useState(false);
   const [showModal, setShowModal] = useState(false);
 

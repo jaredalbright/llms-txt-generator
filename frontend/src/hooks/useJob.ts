@@ -15,7 +15,7 @@ export function useJob() {
   const appliedResultRef = useRef<string | null>(null);
   const validatedMarkdownRef = useRef<string | null>(null);
 
-  const { status: liveStatus, progress, result, error, steps } = useSSE(jobId);
+  const { status: liveStatus, result, error, steps } = useSSE(jobId);
 
   // Use live status when a job is active, otherwise fall back to saved status
   const status = liveStatus ?? savedStatus;
@@ -93,7 +93,6 @@ export function useJob() {
     markdown,
     setMarkdown,
     status,
-    progress,
     error,
     isValidating,
     isValid,

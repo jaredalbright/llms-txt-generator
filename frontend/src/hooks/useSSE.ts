@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { PipelineStep, StepInfo } from '../types';
 
 interface SSEProgress {
-  status: 'crawling' | 'processing' | 'extracting_content' | 'summarizing' | 'completed' | 'error';
+  status: 'pending' | 'crawling' | 'processing' | 'extracting_content' | 'summarizing' | 'completed' | 'error';
   pages_found?: number;
   message?: string;
   step?: PipelineStep;
@@ -20,7 +20,6 @@ const STEP_ORDER: PipelineStep[] = ['crawl', 'metadata', 'fetch_homepage', 'ai_c
 
 export function useSSE(jobId: string | null) {
   const [status, setStatus] = useState<SSEProgress['status'] | null>(null);
-  const [progress, setProgress] = useState<SSEProgress | null>(null);
   const [result, setResult] = useState<SSEResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [steps, setSteps] = useState<StepInfo[]>([]);
@@ -38,7 +37,6 @@ export function useSSE(jobId: string | null) {
     es.addEventListener('progress', (e) => {
       const data: SSEProgress = JSON.parse(e.data);
       setStatus(data.status);
-      setProgress(data);
 
       if (data.step && data.step_state) {
         setSteps(prev => {
@@ -53,14 +51,14 @@ export function useSSE(jobId: string | null) {
               const stepIdx = STEP_ORDER.indexOf(data.step!);
               for (let i = 0; i < stepIdx; i++) {
                 if (!updated.find(s => s.step === STEP_ORDER[i])) {
-                  updated.push({ step: STEP_ORDER[i], state: 'completed', message: '', summary: '', details: [] });
+                  updated.push({ step: STEP_ORDER[i]!, state: 'completed', message: '', summary: '', details: [] });
                 }
               }
               updated.push({ step: data.step!, state: 'active', message: data.message || '', details: [] });
             }
           } else if (data.step_state === 'progress') {
             if (existingIdx >= 0) {
-              const existing = updated[existingIdx];
+              const existing = updated[existingIdx]!;
               const newDetails = data.detail ? [...existing.details, data.detail] : existing.details;
               updated[existingIdx] = { ...existing, message: data.message || existing.message, details: newDetails };
             } else {
@@ -68,7 +66,8 @@ export function useSSE(jobId: string | null) {
             }
           } else if (data.step_state === 'completed') {
             if (existingIdx >= 0) {
-              updated[existingIdx] = { ...updated[existingIdx], state: 'completed', message: data.message || updated[existingIdx].message, summary: data.summary };
+              const existing = updated[existingIdx]!;
+              updated[existingIdx] = { ...existing, state: 'completed', message: data.message || existing.message, summary: data.summary };
             } else {
               updated.push({ step: data.step!, state: 'completed', message: data.message || '', summary: data.summary, details: [] });
             }
@@ -104,5 +103,5 @@ export function useSSE(jobId: string | null) {
     };
   }, [jobId]);
 
-  return { status, progress, result, error, steps };
+  return { status, result, error, steps };
 }

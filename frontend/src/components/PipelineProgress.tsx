@@ -21,7 +21,7 @@ const STEP_LABELS: Record<PipelineStep, string> = {
 function useTypewriter(targetText: string, targetDurationMs = 400) {
   const [displayLen, setDisplayLen] = useState(0);
   const displayLenRef = useRef(0);
-  const rafRef = useRef<number>();
+  const rafRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (displayLenRef.current >= targetText.length) return;
