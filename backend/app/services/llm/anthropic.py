@@ -13,7 +13,7 @@ from app.prompts.categorize import (
     build_categorize_user_prompt,
     search_homepage_content,
 )
-from app.prompts.reprompt import REPROMPT_SYSTEM_PROMPT, build_reprompt_user_prompt
+
 
 logger = logging.getLogger("app.llm.anthropic")
 
@@ -185,19 +185,6 @@ class AnthropicProvider(LLMProvider):
         text = response.content[0].text
         result = _extract_json(text)
         logger.info("Categorization complete (fallback): %d sections", len(result.get("sections", [])))
-        return result
-
-    async def reprompt(self, current_markdown: str, instruction: str) -> str:
-        user_prompt = build_reprompt_user_prompt(current_markdown, instruction)
-        logger.info("Reprompt: '%s' (%d chars of markdown)", instruction[:80], len(current_markdown))
-
-        response = await self._stream_to_text(
-            system=REPROMPT_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_prompt}],
-        )
-
-        result = response.content[0].text.strip()
-        logger.info("Reprompt complete: %d chars returned", len(result))
         return result
 
     async def summarize(self, llms_ctx: str, site_url: str, current_structured_data: dict) -> dict:

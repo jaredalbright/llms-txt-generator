@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { startGeneration, reprompt as repromptApi, validate } from '../lib/api';
+import { startGeneration, validate } from '../lib/api';
 import { useSSE } from './useSSE';
 import type { JobStatus, ValidationIssue } from '../types';
 
@@ -7,7 +7,6 @@ export function useJob() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [url, setUrl] = useState<string>('');
   const [markdown, setMarkdown] = useState<string>('');
-  const [isReprompting, setIsReprompting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [isValid, setIsValid] = useState(true);
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
@@ -78,34 +77,16 @@ export function useJob() {
     setJobId(response.job_id);
   }, [url, clientInfo]);
 
-  const reprompt = useCallback(async (instruction: string) => {
-    if (!jobId || !markdown) return;
-    setIsReprompting(true);
-
-    try {
-      const response = await repromptApi({
-        job_id: jobId,
-        instruction,
-        current_markdown: markdown,
-      });
-      setMarkdown(response.markdown);
-    } finally {
-      setIsReprompting(false);
-    }
-  }, [jobId, markdown]);
-
   const currentStatus: JobStatus | null = status;
 
   return {
     submitJob,
     regenerate,
-    reprompt,
     markdown,
     setMarkdown,
     status: currentStatus,
     progress,
     error,
-    isReprompting,
     isValidating,
     isValid,
     validationIssues,

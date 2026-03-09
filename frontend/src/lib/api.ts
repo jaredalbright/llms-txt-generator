@@ -1,8 +1,6 @@
 import type {
   GenerateRequest,
   GenerateResponse,
-  RepromptRequest,
-  RepromptResponse,
   ValidateRequest,
   ValidateResponse,
 } from '../types';
@@ -25,13 +23,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export function startGeneration(data: GenerateRequest): Promise<GenerateResponse> {
   return request('/api/generate', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export function reprompt(data: RepromptRequest): Promise<RepromptResponse> {
-  return request('/api/reprompt', {
     method: 'POST',
     body: JSON.stringify(data),
   });

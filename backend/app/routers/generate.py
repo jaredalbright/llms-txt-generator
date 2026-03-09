@@ -4,64 +4,49 @@ import json
 import logging
 import uuid
 import zipfile
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 from app.models import (
     GenerateRequest,
     GenerateResponse,
     DownloadRequest,
-    RepromptRequest,
-    RepromptResponse,
 )
+from app.db.repository import JobRepository, get_job_repo
 from app.services.pipeline import run_pipeline
-from app.services.llm.factory import get_llm_provider
 from app.services.generator import slugify, convert_base_to_md
 
 logger = logging.getLogger("app.router.generate")
 
 router = APIRouter()
 
-jobs: dict[str, dict] = {}
-
 
 @router.post("/generate", response_model=GenerateResponse)
-async def create_job(req: GenerateRequest):
+async def create_job(req: GenerateRequest, repo: JobRepository = Depends(get_job_repo)):
     job_id = str(uuid.uuid4())
     event_queue = asyncio.Queue()
 
-    jobs[job_id] = {
-        "status": "pending",
-        "url": str(req.url),
-        "client_info": req.client_info,
-        "pages_found": 0,
-        "markdown": None,
-        "markdown_md": None,
-        "llms_ctx": None,
-        "child_pages": [],
-        "error": None,
-        "event_queue": event_queue,
-    }
+    await repo.create(job_id, str(req.url), req.client_info, event_queue)
 
     logger.info("Job %s created for URL: %s (client_info: %s)", job_id, req.url, "yes" if req.client_info else "no")
 
-    asyncio.create_task(run_pipeline(job_id, str(req.url), jobs))
+    asyncio.create_task(run_pipeline(job_id, str(req.url), repo))
 
     return GenerateResponse(job_id=job_id)
 
 
 @router.get("/generate/{job_id}/stream")
-async def stream_job(job_id: str):
+async def stream_job(job_id: str, repo: JobRepository = Depends(get_job_repo)):
     """SSE endpoint. Client connects here after POST /generate returns job_id."""
-    if job_id not in jobs:
+    job = await repo.get(job_id)
+    if job is None:
         logger.warning("SSE stream requested for unknown job: %s", job_id)
         return {"error": "Job not found"}
 
-    job = jobs[job_id]
-    logger.info("SSE stream opened for job %s (current status: %s)", job_id, job["status"])
+    logger.info("SSE stream opened for job %s (current status: %s)", job_id, job.status)
 
     async def event_generator():
-        queue: asyncio.Queue = job["event_queue"]
+        queue: asyncio.Queue = job.event_queue
 
         while True:
             event = await queue.get()
@@ -108,22 +93,22 @@ async def stream_job(job_id: str):
 
 
 @router.post("/generate/{job_id}/download.zip")
-async def download_zip(job_id: str, req: DownloadRequest):
+async def download_zip(job_id: str, req: DownloadRequest, repo: JobRepository = Depends(get_job_repo)):
     """Download full archive using the user's current edited markdown.
 
     Generates base/llms.txt from the provided markdown, md/llms.txt by
     replacing URLs with .md links only where a .md file was actually generated,
     plus llms-ctx.txt and the individual .md files from the pipeline.
     """
-    if job_id not in jobs:
+    job = await repo.get(job_id)
+    if job is None:
         return {"error": "Job not found"}
 
-    job = jobs[job_id]
-    if job["status"] != "completed":
+    if job.status != "completed":
         return {"error": "Job not completed"}
 
-    child_pages = job.get("child_pages", [])
-    site_url = job.get("url", "")
+    child_pages = job.child_pages or []
+    site_url = job.url
 
     # Use the user's current edited markdown for base
     base_markdown = req.markdown
@@ -141,8 +126,8 @@ async def download_zip(job_id: str, req: DownloadRequest):
         zf.writestr("md/llms.txt", md_markdown)
 
         # llms-ctx.txt (expanded context from pipeline)
-        if job.get("llms_ctx"):
-            zf.writestr("llms-ctx.txt", job["llms_ctx"])
+        if job.llms_ctx:
+            zf.writestr("llms-ctx.txt", job.llms_ctx)
 
         # Individual .md files
         seen_names: set[str] = set()
@@ -164,22 +149,3 @@ async def download_zip(job_id: str, req: DownloadRequest):
         media_type="application/zip",
         headers={"Content-Disposition": "attachment; filename=llms-txt.zip"},
     )
-
-
-@router.post("/reprompt", response_model=RepromptResponse)
-async def reprompt(req: RepromptRequest):
-    """Synchronous LLM call to modify existing markdown based on user instruction."""
-    from app.config import settings
-
-    logger.info("Reprompt for job %s: %s", req.job_id, req.instruction[:100])
-
-    if settings.mock_llm:
-        logger.debug("Using mock reprompt (MOCK_LLM=true)")
-        return RepromptResponse(
-            markdown=req.current_markdown + f"\n\n<!-- Mock reprompt: {req.instruction} -->\n"
-        )
-
-    llm = get_llm_provider()
-    updated_markdown = await llm.reprompt(req.current_markdown, req.instruction)
-    logger.info("Reprompt complete for job %s (%d chars)", req.job_id, len(updated_markdown))
-    return RepromptResponse(markdown=updated_markdown)

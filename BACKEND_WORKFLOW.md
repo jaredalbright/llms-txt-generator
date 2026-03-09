@@ -1,320 +1,371 @@
-# Backend Workflow — Complete Flow
+# Backend Workflow
+
+## Pipeline Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        CLIENT (Frontend)                                    │
-└──────┬──────────────────────┬───────────────────────┬──────────────┬────────┘
-       │                      │                       │              │
-  POST /api/generate     GET /stream/{id}       POST /api/validate   │
-  {url, mode,            (SSE)                  {markdown}      GET /child-pages.zip
-   client_info?}              │                       │              │
-       │                      │                       │              │
-       ▼                      ▼                       ▼              ▼
-┌──────────────┐     ┌───────────────┐      ┌──────────────┐  ┌────────────────┐
-│ create_job() │     │ stream_job()  │      │  validate()  │  │ download_      │
-│ routers/     │     │ routers/      │      │ routers/     │  │ child_pages_   │
-│ generate.py  │     │ generate.py   │      │ validate.py  │  │ zip()          │
-│              │     │               │      │              │  │ routers/       │
-│ • UUID job   │     │ • SSE via     │      │ • Pure logic │  │ generate.py    │
-│ • Queue()    │     │   asyncio     │      │ • No I/O     │  │                │
-│ • store mode │     │   Queue       │      │              │  │ • Builds zip   │
-│ • fire task  │     │ • yields:     │      │              │  │   from stored  │
-│              │     │   progress,   │      │              │  │   child_pages  │
-│              │     │   complete,   │      │              │  │ • slugify()    │
-│              │     │   error       │      │              │  │   for filenames│
-└──────┬───────┘     └───────────────┘      └────────┬─────┘  └────────────────┘
-       │                  ▲  (consumes events)       │
-       ▼                  │                          ▼
-┌──────────────────────────────────────┐   ┌─────────────────────┐
-│         run_pipeline()               │   │ validate_llms_txt() │
-│         services/pipeline.py         │   │ services/           │
-│                                      │   │ validator.py        │
-│  Orchestrates Steps 1–6, pushes      │   │                     │
-│  progress events onto the Queue      │   │ Checks:             │
-│                                      │   │ • H1 exists         │
-│  Accepts mode: "parent_only"|"full"  │   │ • Blockquote exists │
-│  Mode controls whether child pages   │   │ • No H3+ headings   │
-│  are fetched and links rewritten     │   │ • Valid link format  │
-│  to .md URLs                         │   │   (https:// required)│
-└──┬───────────────────────────────────┘   └─────────────────────┘
-   │
-   ▼
+POST /generate(url, client_info?)
+  │
+  ├─ 1. Crawl         → Discover URLs (sitemap + BFS fallback)
+  ├─ 2. Extract        → Fetch metadata (title, description, h1) from each URL
+  ├─ 2b. Homepage      → Fetch homepage HTML → convert to markdown
+  ├─ 3. LLM Categorize → Send pages + homepage to LLM → structured JSON
+  ├─ 4. Fetch Content  → Fetch + convert all categorized pages to markdown
+  ├─ 5. Build Context  → Assemble llms-ctx.txt (inlined page content)
+  ├─ 6. Summarize      → (disabled) LLM refinement pass using llms-ctx
+  └─ 7. Assemble       → Build base llms.txt + md llms.txt → SSE complete
 ```
 
-## Step 1: Crawl — `services/crawler.py`
+All steps run inside `run_pipeline()` in `services/pipeline.py`, orchestrated as a single async task with progress events pushed to an `asyncio.Queue` consumed by the SSE stream.
+
+---
+
+## How URLs Are Picked (The Critical Path)
+
+This is the most impactful part of the pipeline. Every downstream step depends on the quality and relevance of the URLs discovered here.
+
+### Step 1: URL Discovery (`services/crawler.py`)
 
 ```
-INPUT:  url: str  (e.g. "https://example.com")
-        ──────────────────────────────────
-        │                                │
-        ▼                                ▼
-   GET /sitemap.xml              Fallback: BFS link crawl
-   (httpx, 10s timeout)         (httpx, 30s timeout)
-   Parse XML <loc> tags          Parse <a href> tags
-        │                                │
-        └────────┬───────────────────────┘
-                 ▼
-        Dedupe, same-domain filter, cap at MAX_PAGES (50)
-
-OUTPUT: list[str]  — discovered URLs
-SSE:    {type: "progress", status: "crawling", pages_found: N}
-I/O:    HTTP GET → target website (sitemap.xml + homepage)
+crawl_site(url)
+  │
+  ├─ Try /sitemap.xml (10s timeout)
+  │   └─ Parse XML <loc> tags
+  │
+  ├─ If sitemap returned < 5 URLs:
+  │   └─ Fallback: extract <a href> from homepage (single-page, not true BFS)
+  │
+  ├─ Always include the homepage URL
+  ├─ Filter to same-domain only (netloc match)
+  ├─ Strip fragments and query params
+  └─ Cap at MAX_PAGES (default 50)
 ```
 
-## Step 2: Extract Metadata — `services/extractor.py`
+**Current behavior:**
 
-```
-INPUT:  list[str]  — URLs from Step 1
-                 │
-                 ▼  (sequential loop, one URL at a time)
-        GET each URL (httpx, 15s timeout)
-        Parse HTML with BeautifulSoup:
-          • <title>         → title
-          • <meta name="description"> → description
-          • <meta property="og:description"> → fallback
-          • <h1>            → h1
+- Sitemap is the primary source. If a site has a good sitemap, this works well.
+- If the sitemap has fewer than 5 URLs (or is missing), falls back to scraping `<a>` tags from the homepage only.
+- The fallback does NOT implement true BFS despite the `max_depth=2` parameter — it only reads one page. The TODO at line 79 of `crawler.py` acknowledges this.
+- No filtering of junk URLs (login pages, API endpoints, admin panels, asset paths, etc.)
+- No prioritization — the first 50 URLs found (in set iteration order) are used.
 
-OUTPUT: list[PageMeta(url, title, description, h1)]
-SSE:    {type: "progress", status: "processing", message: "Analyzing..."}
-I/O:    HTTP GET → target website (each discovered page)
-```
+**Problems with current URL selection:**
 
-## Step 3: LLM Categorization — `services/llm/*.py` + `prompts/categorize.py`
+1. **No URL filtering.** Sitemap dumps include everything: `/login`, `/api/v1/docs`, `/admin`, `/terms-of-service`, old blog posts, paginated archives (`/blog/page/3`), etc. These all get sent to the LLM and waste tokens/attention.
+2. **No ranking or scoring.** A critical product documentation page and a 3-year-old changelog entry are treated identically. The LLM has to figure out importance from titles alone.
+3. **Incomplete fallback.** The BFS crawler only reads the homepage, so sites without sitemaps get very few URLs. A true 2-hop crawl would find significantly more pages.
+4. **Arbitrary threshold.** The `< 5` sitemap URL check is a magic number. A site could have exactly 5 low-quality sitemap URLs (all blog posts) and skip the fallback entirely.
+5. **No deduplication of near-duplicates.** `/docs/getting-started` and `/docs/getting-started/` are treated as different URLs. Query params are stripped, but trailing slashes are only handled for the homepage.
 
-```
-INPUT:  site_url: str
-        pages: list[PageMeta]
-        client_info: str | None
-                 │
-        ┌────────┴────────┐
-        ▼                 ▼
-   MOCK_LLM=true     MOCK_LLM=false
-   testing/           services/llm/
-   mock_llm.py        factory.py → anthropic.py OR openai.py
-   (fixture data)          │
-                           ▼
-                  ┌──────────────────────────┐
-                  │ Anthropic or OpenAI API   │
-                  │                          │
-                  │ System: categorize.py     │
-                  │   SYSTEM_PROMPT          │
-                  │ User: build_user_prompt() │
-                  │   "Analyze this website…" │
-                  │   + page list             │
-                  └──────────┬───────────────┘
-                             ▼
-                     Parse JSON response
+### Optimization Opportunities for URL Selection
 
-OUTPUT: dict {
-          site_name: str,
-          summary: str,
-          context: str | None,
-          sections: [{name, pages: [{title, url, description}]}]
-        }
-I/O:    HTTP POST → Anthropic API or OpenAI API
+**Pre-filter junk URLs before they reach the LLM:**
+
+```python
+EXCLUDE_PATTERNS = [
+    r'/api/',  r'/admin/',  r'/auth/',  r'/login',  r'/logout',
+    r'/signup', r'/register', r'/reset-password',
+    r'/page/\d+',  # paginated archives
+    r'/tag/',  r'/category/',  # taxonomy pages
+    r'\.(xml|json|rss|atom)$',  # feeds/data
+    r'/wp-admin', r'/wp-json',  # WordPress internals
+    r'/cdn-cgi/',  # Cloudflare internals
+]
 ```
 
-## Step 4: Fetch Child Pages (full mode only) — `services/content_fetcher.py`
+**Score URLs by probable importance:**
+
+- Pages linked from the main navigation (`<nav>`) → high priority
+- Pages in the header/footer → medium priority
+- Pages only found in sitemap → lower priority
+- Depth from homepage (fewer clicks = more important)
+- URL path depth (`/docs` > `/docs/api/v2/legacy/endpoint`)
+
+**Implement actual BFS crawl:**
+
+- Track visited URLs and depth
+- Respect `max_depth=2` properly
+- Prioritize shorter URL paths and navigation links
+
+**Smarter cap management:**
+
+- Instead of hard cap at 50, keep the top N by score
+- Or: send the LLM a larger list but instruct it to pick the top N
+
+---
+
+## How Data Flows Into the LLM
+
+### Step 2: Metadata Extraction (`services/extractor.py`)
+
+For each discovered URL, fetch the page and extract:
+
+- `title` from `<title>` tag (fallback: `og:title`, then URL)
+- `description` from `<meta name="description">` (fallback: `og:description`)
+- `h1` from first `<h1>` tag
+
+Returns `list[PageMeta(url, title, description, h1)]`.
+
+**Current issue:** Fetches are sequential (one at a time). There's a TODO to add concurrent fetching with `asyncio.gather` + semaphore. For 50 pages at 1-3s each, this step alone can take 1-2 minutes.
+
+### Step 2b: Homepage Markdown
+
+The homepage URL is fetched separately through `fetch_and_convert()` (from `content_fetcher.py`), which:
+
+1. Fetches the HTML
+2. Strips nav, footer, header, script, style, noscript, aside tags
+3. Converts remaining HTML to markdown via `markdownify`
+
+This homepage markdown gives the LLM rich context about what the site actually does.
+
+### Step 3: LLM Categorization (`services/llm/*.py` + `prompts/categorize.py`)
+
+This is where the discovered URLs become a structured llms.txt. The LLM receives:
 
 ```
-CONDITION: mode == "full"  (skipped entirely in "parent_only" mode)
-
-INPUT:  child_urls: list[str]  — all page URLs from structured_data sections
-                 │
-                 ▼
-        Concurrent fetch with asyncio.Semaphore(CONTENT_FETCH_CONCURRENCY=5)
-        For each URL:
-          • GET page (httpx, 15s timeout, follow redirects)
-          • Parse HTML with BeautifulSoup (lxml)
-          • Find content: <main> → <article> → <body> fallback
-          • Strip: nav, footer, header, script, style, noscript, aside
-          • Convert cleaned HTML → markdown via markdownify
-          • Extract <title> for filename
-          • Push progress event per page
-
-OUTPUT: list[ChildPageContent(url, title, markdown_content)]
-        Pages that fail to fetch are silently skipped
-SSE:    {type: "progress", status: "extracting_content",
-         message: "Extracting content 3/15..."}
-I/O:    HTTP GET → target website (each child page, concurrent)
+┌──────────────────────────────────────────────────────────┐
+│ SYSTEM PROMPT (categorize.py)                            │
+│                                                          │
+│ • llms.txt spec (format rules)                           │
+│ • Instructions: pick site name, write description,       │
+│   write details, group pages into 2-6 sections,          │
+│   use "Optional" for secondary content                   │
+│ • Guidelines: <15 word descriptions, ~10 main links,     │
+│   every page in exactly one section                      │
+├──────────────────────────────────────────────────────────┤
+│ USER PROMPT (build_categorize_user_prompt)                │
+│                                                          │
+│ • Site URL                                               │
+│ • client_info (optional user context about the site)     │
+│ • user_preferences (optional output preferences)         │
+│ • Flat list of all pages:                                │
+│     - URL: https://...                                   │
+│       Title: Page Title                                  │
+│       Description: meta description or (none)            │
+│ • Homepage markdown (if < 10,000 chars, inlined)         │
+└──────────────────────────────────────────────────────────┘
 ```
 
-## Step 5: Assemble Markdown — `services/generator.py`
+**Two execution modes based on homepage size:**
 
-```
-INPUT:  structured_data: dict  (from Step 3)
-        child_pages: list[ChildPageContent] | None  (from Step 4, or None)
-        site_url: str | None  (original URL, only when child_pages exist)
-                 │
-                 ▼
-        ┌────────┴────────────────┐
-        ▼                         ▼
-   parent_only mode          full mode
-   (child_pages=None)        (child_pages provided)
-        │                         │
-        ▼                         ▼
-   Links use original        Build URL → .md URL lookup:
-   page URLs                   slugify(title) → {base_url}/{slug}.md
-                                e.g. https://example.com/getting-started.md
-                              Links use .md URLs for fetched pages,
-                              original URLs for pages that failed to fetch
-        │                         │
-        └────────┬────────────────┘
-                 ▼
-        Build markdown string:
-          # {site_name}
-          > {summary}
-          {context}
-          ## {section.name}
-          - [title](url_or_md_url): description
-          ...
 
-OUTPUT: str  — valid llms.txt markdown
-I/O:    None (pure transformation)
+| Homepage size              | Mode          | Behavior                                                                                                             |
+| -------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| < 10,000 chars             | **Inline**    | Homepage markdown included directly in user prompt                                                                   |
+| ≥ 10,000 chars (Anthropic) | **Tool-use**  | LLM gets `search_homepage(query)` tool, searches homepage content by keyword with 3-line context. Max 5 tool rounds. |
+| ≥ 10,000 chars (OpenAI)    | **Truncated** | Homepage truncated to 10,000 chars + `[... truncated ...]`                                                           |
 
-NOTE:   slugify() is shared between generator.py and the zip endpoint
-        to ensure .md filenames match in both the llms.txt links and
-        the downloadable zip archive.
+
+**LLM output (JSON):**
+
+```json
+{
+  "site_name": "Human Readable Name",
+  "description": "One sentence for the blockquote.",
+  "details": "Markdown body text with keywords for discoverability.",
+  "sections": [
+    {
+      "name": "Section Name",
+      "pages": [
+        {"title": "Page Title", "url": "https://...", "description": "What this covers."}
+      ]
+    }
+  ]
+}
 ```
 
-## Step 6: Complete & Stream
+**What the LLM decides:**
+
+- Which pages go in which section
+- What the sections are called
+- Page descriptions (rewrites missing/bad ones)
+- What goes in "Optional" vs primary sections
+- The LLM *can* drop pages entirely (instructions say "every page in exactly one section" but there's no enforcement)
+
+**Problems with how data reaches the LLM:**
+
+1. **Flat, unranked page list.** The LLM sees 50 pages in discovery order with no signal about which are important. Navigation structure, link depth, and page prominence are all lost.
+2. **Missing descriptions are common.** Many pages have `(none)` for description, forcing the LLM to guess from titles alone. The LLM could make better decisions if it had actual page content snippets.
+3. **No structural hints.** The LLM doesn't know which pages were in the site's navigation, which were buried deep, or which had the most internal links pointing to them.
+4. **Homepage markdown is optional/truncated.** For large sites (which are the ones that need the most help), the LLM gets the least homepage context.
+
+### Optimization Opportunities for LLM Input
+
+**Enrich the page list with signals:**
 
 ```
-INPUT:  markdown: str  (from Step 5)
-        child_pages: list[ChildPageContent]  (from Step 4, may be empty)
-                 │
-                 ▼
-        • job["status"] = "completed"
-        • job["markdown"] = markdown
-        • job["child_pages"] = child_pages  (stored for zip download)
-        • Queue.put({type: "complete", markdown: ..., has_child_pages: bool})
-        • TODO: persist to Supabase
+- URL: https://example.com/docs
+  Title: Documentation
+  Description: Complete API reference and guides
+  Source: navigation, sitemap     ← where was this found?
+  Depth: 1                        ← clicks from homepage
+  Internal links: 24              ← how many pages link here?
+```
 
-OUTPUT: SSE event → client receives final markdown + child pages flag
-I/O:    In-memory dict update (Supabase stubbed)
+**Send a pre-filtered, ranked list:**
+Instead of dumping all 50 URLs, score them first and send the top 30 with scores. Let the LLM focus on curation, not filtering.
+
+**Extract first-paragraph summaries for pages missing descriptions:**
+During metadata extraction, grab the first `<p>` tag content as a fallback description. Much better than `(none)`.
+
+**Consider two-pass approach:**
+
+1. First pass: send URLs + titles only, ask LLM to identify the 20 most important pages
+2. Second pass: send those 20 with full descriptions + homepage context for detailed categorization
+
+---
+
+## Post-LLM Pipeline
+
+### Step 4: Content Fetching (`services/content_fetcher.py`)
+
+After LLM categorization, every URL in the structured output is fetched and converted to markdown:
+
+```
+structured_data.sections[*].pages[*].url
+  → fetch_child_pages(urls, concurrency=5)
+    → For each URL:
+        1. GET page (httpx, 15s timeout)
+        2. Parse HTML (BeautifulSoup + lxml)
+        3. Find content: <main> → <article> → <body> fallback
+        4. Strip: nav, footer, header, script, style, noscript, aside
+        5. Convert to markdown (markdownify, skip images)
+        6. Extract <title>
+    → Returns: ChildPageContent(url, title, markdown_content)
+    → Failed pages silently skipped
+```
+
+### Step 5: Context Assembly (`services/generator.py`)
+
+Three output formats are built:
+
+`**assemble_base_markdown(structured_data)**` → `llms.txt` with original URLs
+
+```markdown
+# Site Name
+> One sentence description.
+Details paragraph...
+
+## Section Name
+- [Page Title](https://original-url.com): Description
+```
+
+`**assemble_md_markdown(structured_data, child_pages, site_url)**` → `llms.txt` with .md URLs
+
+```markdown
+## Section Name
+- [Page Title](https://site.com/page-title.md): Description
+```
+
+Slug generation: title → lowercase, strip special chars, spaces to hyphens, cap at 80 chars.
+
+`**assemble_llms_ctx(structured_data, child_pages)**` → `llms-ctx.txt` with inlined content
+
+```markdown
+## Section Name
+<doc url="https://..." title="Page Title">
+Full markdown content of the page...
+</doc>
+```
+
+Pages without fetched content fall back to link + description format.
+
+### Step 6: Summarize (Currently Disabled)
+
+Intended to take the llms-ctx and run a second LLM pass to refine the structured_data. Not yet implemented.
+
+---
+
+## Endpoints
+
+
+| Method | Path                              | Purpose                                                                                                                                               |
+| ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/generate`                   | Start generation. Body: `{url, client_info?}`. Returns `{job_id}`.                                                                                    |
+| `GET`  | `/api/generate/{id}/stream`       | SSE stream. Events: `progress`, `complete`, `error`.                                                                                                  |
+| `POST` | `/api/generate/{id}/download.zip` | Build ZIP from user-edited markdown. Body: `{markdown}`. Returns ZIP with `base/llms.txt`, `md/llms.txt`, `llms-ctx.txt`, and individual `.md` files. |
+| `POST` | `/api/validate`                   | Validate markdown against llms.txt spec. Body: `{markdown}`. Returns issues list.                                                                     |
+
+
+---
+
+## SSE Progress Events
+
+Each pipeline step reports progress through `StepProgressReporter`:
+
+```json
+{"type": "progress", "step": "crawl", "status": "started", "message": "Discovering pages..."}
+{"type": "progress", "step": "crawl", "detail": "Sitemap: 34 URLs"}
+{"type": "progress", "step": "crawl", "status": "completed", "message": "Found 34 pages"}
+{"type": "progress", "step": "metadata", "status": "started", ...}
+{"type": "progress", "step": "ai_categorize", "detail": "...partial LLM output..."}
+{"type": "progress", "step": "fetch_content", ...}
+{"type": "progress", "step": "assemble", ...}
+{"type": "complete", "markdown": "# Site Name\n> ..."}
 ```
 
 ---
 
-## Reprompt Flow — `POST /api/reprompt`
+## File Map
 
-```
-INPUT:  {job_id, instruction, current_markdown}
-                 │
-        ┌────────┴────────┐
-        ▼                 ▼
-   MOCK_LLM=true     MOCK_LLM=false
-   Append comment     llm.reprompt()
-                       │
-                       ▼
-              prompts/reprompt.py
-              → Anthropic/OpenAI API
-              "Here's the current llms.txt,
-               apply this instruction: ..."
 
-OUTPUT: {markdown: str}  — modified markdown
-I/O:    HTTP POST → LLM API
-```
+| File                              | Role                                                    |
+| --------------------------------- | ------------------------------------------------------- |
+| `app/main.py`                     | FastAPI app, CORS, logging middleware                   |
+| `app/config.py`                   | Pydantic `BaseSettings` — env vars                      |
+| `app/models.py`                   | `GenerateRequest`, `PageMeta`, `ChildPageContent`, etc. |
+| `app/routers/generate.py`         | Generation endpoints + SSE streaming                    |
+| `app/routers/validate.py`         | `/api/validate`                                         |
+| `app/services/pipeline.py`        | Orchestrator — runs steps 1–7, manages Queue            |
+| `app/services/crawler.py`         | URL discovery (sitemap + link crawl)                    |
+| `app/services/extractor.py`       | HTML → PageMeta extraction                              |
+| `app/services/content_fetcher.py` | HTML → markdown conversion (child pages)                |
+| `app/services/generator.py`       | Markdown assembly (base, md, ctx) + `slugify()`         |
+| `app/services/llm/base.py`        | Abstract `LLMProvider`                                  |
+| `app/services/llm/factory.py`     | Provider selection from config                          |
+| `app/services/llm/anthropic.py`   | Anthropic API (streaming + tool use)                    |
+| `app/services/llm/openai.py`      | OpenAI API (streaming, no tool use)                     |
+| `app/prompts/categorize.py`       | System/user prompts + `search_homepage` tool            |
+| `app/services/validator.py`       | llms.txt spec compliance checker                        |
+| `app/testing/mock_llm.py`         | Mock data for `MOCK_LLM=true`                           |
 
----
 
-## Child Pages Zip Download — `GET /api/generate/{job_id}/child-pages.zip`
+## Configuration
 
-```
-CONDITION: job must have child_pages (full mode completed)
 
-INPUT:  job_id from URL path
-                 │
-                 ▼
-        Read child_pages from in-memory job store
-        Build zip in-memory (io.BytesIO + zipfile):
-          For each ChildPageContent:
-            • slugify(title) → filename (deduplicated)
-            • Write {slug}.md with markdown_content
-        Return as StreamingResponse (application/zip)
+| Var                          | Default                      | Purpose                                 |
+| ---------------------------- | ---------------------------- | --------------------------------------- |
+| `LLM_PROVIDER`               | `"anthropic"`                | Anthropic vs OpenAI                     |
+| `LLM_MODEL`                  | `"claude-sonnet-4-20250514"` | Model for categorization                |
+| `MAX_PAGES`                  | `50`                         | URL discovery cap                       |
+| `CRAWL_TIMEOUT`              | `30`                         | Seconds for page fetches                |
+| `CONTENT_FETCH_CONCURRENCY`  | `5`                          | Concurrent child page fetches           |
+| `HOMEPAGE_CONTENT_THRESHOLD` | `10000`                      | Chars before switching to tool-use mode |
+| `MOCK_LLM`                   | `true`                       | Skip real LLM calls                     |
+| `FRONTEND_URL`               | `http://localhost:5173`      | CORS origin                             |
 
-OUTPUT: ZIP archive containing individual .md files
-I/O:    None (reads from in-memory job store)
-```
 
 ---
 
-## File → Responsibility Map
+## Summary of Optimization Opportunities
 
-| File | Role |
-|------|------|
-| `app/main.py` | FastAPI app init, CORS, request logging middleware |
-| `app/config.py` | Pydantic `BaseSettings` — all env vars |
-| `app/models.py` | Pydantic models: `GenerateRequest`, `GenerationMode`, `PageMeta`, `ChildPageContent`, `ValidationIssue`, etc. |
-| `app/routers/generate.py` | `/api/generate`, `/api/generate/{id}/stream`, `/api/generate/{id}/child-pages.zip`, `/api/reprompt` |
-| `app/routers/validate.py` | `/api/validate` |
-| `app/services/pipeline.py` | Orchestrator — calls Steps 1→6, manages Queue events, mode-aware |
-| `app/services/crawler.py` | Step 1 — sitemap + BFS URL discovery |
-| `app/services/extractor.py` | Step 2 — HTML metadata extraction |
-| `app/services/content_fetcher.py` | Step 4 — concurrent HTML fetch + markdownify conversion (full mode) |
-| `app/services/llm/base.py` | Abstract `LLMProvider` (categorize + reprompt) |
-| `app/services/llm/factory.py` | Returns Anthropic or OpenAI provider from config |
-| `app/services/llm/anthropic.py` | Anthropic API calls |
-| `app/services/llm/openai.py` | OpenAI API calls |
-| `app/services/generator.py` | Step 5 — dict → markdown assembly, link rewriting, `slugify()` |
-| `app/services/validator.py` | Markdown spec compliance checker |
-| `app/prompts/categorize.py` | System + user prompts for categorization |
-| `app/prompts/reprompt.py` | System + user prompts for reprompting |
-| `app/prompts/summarize.py` | Prompt templates for summarization (stub) |
-| `app/testing/mock_llm.py` | Fixture data (bypasses LLM when `MOCK_LLM=true`) |
-| `app/db/client.py` | Supabase client stub (`NotImplementedError`) |
-| `app/db/jobs.py` | Job persistence stubs (TODO) |
+### High Impact
 
-## All External I/O Summary
+1. **Pre-filter junk URLs** before sending to LLM — exclude login, admin, API, pagination, taxonomy, and feed URLs using pattern matching
+2. **Concurrent metadata extraction** — switch from sequential to `asyncio.gather` with semaphore (could cut step 2 time by 5-10x)
+3. **Enrich page data with structural signals** — navigation presence, link depth, internal link count — so the LLM can make informed ranking decisions
+4. **Extract first-paragraph fallback** for pages with no meta description, giving the LLM actual content to work with
 
-| Target | Protocol | Where | Purpose |
-|--------|----------|-------|---------|
-| Target website | HTTP GET | `crawler.py`, `extractor.py` | Sitemap, pages, metadata |
-| Target website | HTTP GET | `content_fetcher.py` | Child page HTML (full mode, concurrent) |
-| Anthropic API | HTTP POST | `llm/anthropic.py` | Categorize pages, reprompt |
-| OpenAI API | HTTP POST | `llm/openai.py` | Categorize pages, reprompt |
-| Supabase | — | `db/client.py` | **Stubbed / not implemented** |
-| Client browser | SSE | `routers/generate.py` | Stream progress + result |
+### Medium Impact
 
-## Configuration & Environment Variables
+1. **Implement real BFS crawl** with depth tracking for sites without sitemaps
+2. **URL scoring/ranking** before LLM — prioritize navigation links, shallow pages, and frequently-linked pages
+3. **Two-pass LLM approach** — quick triage pass to pick top pages, then detailed categorization pass
+4. **Normalize URLs** more aggressively — trailing slashes, www vs non-www, case normalization
 
-All via `app/config.py` → `BaseSettings` from `pydantic_settings`:
+### Lower Impact
 
-| Var | Default | Usage |
-|-----|---------|-------|
-| `LLM_PROVIDER` | `"anthropic"` | Selects Anthropic vs OpenAI |
-| `ANTHROPIC_API_KEY` | `""` | Auth for Anthropic API |
-| `OPENAI_API_KEY` | `""` | Auth for OpenAI API |
-| `LLM_MODEL` | `"claude-sonnet-4-20250514"` | LLM model to use |
-| `SUPABASE_URL`, `SUPABASE_KEY` | `""` | Database (not yet used) |
-| `MAX_PAGES` | `50` | URL discovery cap |
-| `CRAWL_TIMEOUT` | `30` | Seconds per page GET |
-| `CONTENT_FETCH_CONCURRENCY` | `5` | Max concurrent child page fetches (full mode) |
-| `MOCK_LLM` | `True` | Skip real LLM, use fixtures |
-| `FRONTEND_URL` | `"http://localhost:5173"` | CORS allowed origin |
+1. **Skip fetching "Optional" section pages** in step 4 — they're secondary content
+2. **Enable the summarize step** (step 6) — use llms-ctx to refine the initial categorization
+3. **Cache fetched pages** — avoid re-fetching homepage in step 2b when it was already fetched in step 2
+4. **Sitemap index support** — follow `<sitemap>` entries in sitemap indexes to discover sub-sitemaps
 
-## Models
-
-| Model | Fields | Usage |
-|-------|--------|-------|
-| `GenerationMode` | `PARENT_ONLY`, `FULL` | Enum — controls child page fetching |
-| `JobStatus` | `PENDING`, `CRAWLING`, `EXTRACTING_CONTENT`, `PROCESSING`, `COMPLETED`, `ERROR` | Enum — SSE status values |
-| `GenerateRequest` | `url`, `client_info?`, `mode` | POST /api/generate body |
-| `ChildPageContent` | `url`, `title`, `markdown_content` | Fetched child page data |
-| `PageMeta` | `url`, `title`, `description`, `h1?`, `uuid?`, `parent_uuid?` | Extracted page metadata |
-
-## Error Handling
-
-All errors in `run_pipeline()` are caught at the top level:
-
-- Log stack trace
-- Set job status to `"error"`
-- Queue SSE event: `{type: "error", message: "Generation failed: {error}"}`
-- Stream closes with error
-
-Example failures:
-
-- Network timeout during crawl/extract → logged warning, pages skipped
-- LLM API error → caught, error queued to client
-- Invalid JSON from LLM → `json.loads()` exception → caught at pipeline level
-- Child page fetch failure (full mode) → logged warning, page skipped, link keeps original URL

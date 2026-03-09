@@ -7,7 +7,7 @@ from app.services.progress import StepProgressReporter
 from app.models import PageMeta
 from app.config import settings
 from app.prompts.categorize import CATEGORIZE_SYSTEM_PROMPT, build_categorize_user_prompt
-from app.prompts.reprompt import REPROMPT_SYSTEM_PROMPT, build_reprompt_user_prompt
+
 
 logger = logging.getLogger("app.llm.openai")
 
@@ -73,23 +73,6 @@ class OpenAIProvider(LLMProvider):
 
         result = json.loads(text.strip())
         logger.info("Categorization complete: %d sections", len(result.get("sections", [])))
-        return result
-
-    async def reprompt(self, current_markdown: str, instruction: str) -> str:
-        user_prompt = build_reprompt_user_prompt(current_markdown, instruction)
-        logger.info("Reprompt: '%s' (%d chars of markdown)", instruction[:80], len(current_markdown))
-
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            max_tokens=4096,
-            messages=[
-                {"role": "system", "content": REPROMPT_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-
-        result = response.choices[0].message.content.strip()
-        logger.info("Reprompt complete: %d chars returned", len(result))
         return result
 
     async def summarize(self, llms_ctx: str, site_url: str, current_structured_data: dict) -> dict:

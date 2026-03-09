@@ -30,16 +30,6 @@ class LLMProvider(ABC):
         pass
 
     @abstractmethod
-    async def reprompt(
-        self, current_markdown: str, instruction: str
-    ) -> str:
-        """
-        Given the current llms.txt markdown and a user instruction,
-        return the modified markdown.
-        """
-        pass
-
-    @abstractmethod
     async def summarize(
         self, llms_ctx: str, site_url: str, current_structured_data: dict
     ) -> dict:

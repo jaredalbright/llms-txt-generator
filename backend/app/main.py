@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import generate, validate
 from app.config import settings
+from app.db import InMemoryJobRepository, init_job_repo
 
 # Configure root logger
 logging.basicConfig(
@@ -21,6 +22,8 @@ logging.getLogger("uvicorn.access").setLevel(logging.INFO)
 logger = logging.getLogger("app")
 
 app = FastAPI(title="llms.txt Generator API")
+
+init_job_repo(InMemoryJobRepository())
 
 app.add_middleware(
     CORSMiddleware,

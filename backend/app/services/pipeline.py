@@ -3,6 +3,7 @@ import logging
 import traceback
 import httpx
 from app.config import settings
+from app.db.repository import JobRepository
 from app.services.progress import StepProgressReporter
 from app.services.crawler import crawl_site
 from app.services.extractor import extract_metadata
@@ -14,7 +15,7 @@ from app.testing.mock_llm import MockLLMProvider
 logger = logging.getLogger("app.pipeline")
 
 
-async def run_pipeline(job_id: str, url: str, jobs: dict):
+async def run_pipeline(job_id: str, url: str, repo: JobRepository):
     """
     Full async pipeline:
     1. Crawl the site (discover URLs)
@@ -25,8 +26,8 @@ async def run_pipeline(job_id: str, url: str, jobs: dict):
     6. LLM summarize using llms-ctx -> improved structured_data
     7. Assemble final outputs (base llms.txt, md llms.txt)
     """
-    job = jobs[job_id]
-    queue: asyncio.Queue = job["event_queue"]
+    job = await repo.get(job_id)
+    queue: asyncio.Queue = job.event_queue
 
     logger.info("[%s] Pipeline started for %s", job_id[:8], url)
 
@@ -72,7 +73,7 @@ async def run_pipeline(job_id: str, url: str, jobs: dict):
             if not settings.mock_llm else "Using mock data (MOCK_LLM=true)..."
         )
 
-        client_info = job.get("client_info")
+        client_info = job.client_info
         if settings.mock_llm:
             logger.info("[%s] Step 3: Using mock LLM data", job_id[:8])
             structured_data = MockLLMProvider.mock_structured_data(url, pages)
@@ -124,11 +125,14 @@ async def run_pipeline(job_id: str, url: str, jobs: dict):
         await assemble_reporter.completed("Output files ready")
 
         # --- Step 8: Done ---
-        job["status"] = "completed"
-        job["markdown"] = markdown_base
-        job["markdown_md"] = markdown_md
-        job["llms_ctx"] = llms_ctx
-        job["child_pages"] = child_pages
+        await repo.update(
+            job_id,
+            status="completed",
+            markdown=markdown_base,
+            markdown_md=markdown_md,
+            llms_ctx=llms_ctx,
+            child_pages=child_pages,
+        )
 
         await queue.put({
             "type": "complete",
@@ -140,8 +144,7 @@ async def run_pipeline(job_id: str, url: str, jobs: dict):
     except Exception as e:
         logger.error("[%s] Pipeline failed: %s", job_id[:8], e)
         logger.debug("[%s] Traceback:\n%s", job_id[:8], traceback.format_exc())
-        job["status"] = "error"
-        job["error"] = str(e)
+        await repo.update(job_id, status="error", error=str(e))
         await queue.put({
             "type": "error",
             "message": f"Generation failed: {str(e)}",
