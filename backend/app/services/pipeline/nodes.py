@@ -246,6 +246,7 @@ class CategorizeNode(PipelineNode):
                 client_info=generation.client_info,
                 homepage_markdown=generation.homepage_markdown,
                 url_metadata=generation.url_metadata or None,
+                prompts_context=generation.prompts_context or None,
                 reporter=reporter,
             )
 
@@ -339,6 +340,7 @@ class SummarizeNode(PipelineNode):
                     generation.llms_ctx,
                     generation.url,
                     generation.structured_data,
+                    prompts_context=generation.prompts_context or None,
                     reporter=reporter,
                 )
                 # Rebuild llms_ctx with improved data

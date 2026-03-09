@@ -1,17 +1,19 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { renderMarkdown } from '../lib/markdown';
 
 interface PreviewProps {
   markdown: string;
+  headerRight?: ReactNode;
 }
 
-export default function Preview({ markdown }: PreviewProps) {
+export default function Preview({ markdown, headerRight }: PreviewProps) {
   const html = useMemo(() => renderMarkdown(markdown), [markdown]);
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-2 border-b border-profound-border">
+      <div className="flex items-center justify-between px-4 h-10 border-b border-profound-border">
         <span className="text-sm font-medium text-profound-muted">Preview</span>
+        {headerRight}
       </div>
       <div
         className="flex-1 p-4 prose prose-sm max-w-none overflow-auto

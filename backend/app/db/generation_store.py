@@ -7,7 +7,7 @@ from app.models.generation import Generation
 class GenerationStore(ABC):
     @abstractmethod
     async def create(
-        self, generation_id: str, url: str, client_info: str | None = None
+        self, generation_id: str, url: str, client_info: str | None = None, prompts_context: list[str] | None = None
     ) -> Generation: ...
 
     @abstractmethod
@@ -22,9 +22,9 @@ class InMemoryGenerationStore(GenerationStore):
         self._generations: dict[str, Generation] = {}
 
     async def create(
-        self, generation_id: str, url: str, client_info: str | None = None
+        self, generation_id: str, url: str, client_info: str | None = None, prompts_context: list[str] | None = None
     ) -> Generation:
-        gen = Generation(id=generation_id, url=url, client_info=client_info)
+        gen = Generation(id=generation_id, url=url, client_info=client_info, prompts_context=prompts_context or [])
         self._generations[generation_id] = gen
         return gen
 

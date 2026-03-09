@@ -7,7 +7,7 @@ interface EditorProps {
 export default function Editor({ value, onChange, readOnly }: EditorProps) {
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-2 border-b border-profound-border">
+      <div className="flex items-center px-4 h-10 border-b border-profound-border">
         <span className="text-sm font-medium text-profound-muted">Markdown</span>
       </div>
       <textarea

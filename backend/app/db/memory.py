@@ -8,12 +8,13 @@ class InMemoryJobRepository(JobRepository):
     def __init__(self):
         self._jobs: dict[str, Job] = {}
 
-    async def create(self, job_id: str, url: str, client_info: str | None, event_queue: asyncio.Queue) -> Job:
+    async def create(self, job_id: str, url: str, client_info: str | None, event_queue: asyncio.Queue, prompts_context: list[str] | None = None) -> Job:
         job = Job(
             id=job_id,
             status="pending",
             url=url,
             client_info=client_info,
+            prompts_context=prompts_context,
             event_queue=event_queue,
         )
         self._jobs[job_id] = job

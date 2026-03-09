@@ -26,11 +26,11 @@ async def create_job(req: GenerateRequest, repo: JobRepository = Depends(get_job
     job_id = str(uuid.uuid4())
     event_queue = asyncio.Queue()
 
-    await repo.create(job_id, str(req.url), req.client_info, event_queue)
+    await repo.create(job_id, str(req.url), req.client_info, event_queue, prompts_context=req.prompts_context)
 
     logger.info("Job %s created for URL: %s (client_info: %s)", job_id, req.url, "yes" if req.client_info else "no")
 
-    asyncio.create_task(run_pipeline(job_id, str(req.url), repo))
+    asyncio.create_task(run_pipeline(job_id, str(req.url), repo, prompts_context=req.prompts_context))
 
     return GenerateResponse(job_id=job_id)
 

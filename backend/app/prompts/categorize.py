@@ -166,6 +166,7 @@ def build_categorize_user_prompt(
     homepage_markdown: str | None = None,
     use_tool_mode: bool = False,
     url_metadata: dict[str, dict] | None = None,
+    prompts_context: list[str] | None = None,
 ) -> str:
     lines = []
     for p in pages:
@@ -192,6 +193,19 @@ Output preferences:
 
 Apply these preferences to influence tone, focus areas, section emphasis, and description style."""
 
+    prompts_section = ""
+    if prompts_context:
+        bullet_list = "\n".join(f"- {p}" for p in prompts_context)
+        prompts_section = f"""
+
+The user wants the llms.txt to subtly address these AI search prompts. When writing the site
+description, details, and page descriptions, try to naturally incorporate information that would
+help answer these prompts:
+{bullet_list}
+
+Do NOT mention these prompts explicitly. Instead, weave relevant keywords, features, and facts
+into the description and details fields so the site is more discoverable for these queries."""
+
     homepage_section = ""
     if homepage_markdown and not use_tool_mode:
         homepage_section = f"""
@@ -210,7 +224,7 @@ The homepage content is large. Use the search_homepage tool to look up relevant 
     return f"""Analyze this website and categorize its pages for an llms.txt file.
 
 Website: {site_url}
-{client_section}{preferences_section}{homepage_section}
+{client_section}{preferences_section}{prompts_section}{homepage_section}
 Pages found:
 {page_list}
 
