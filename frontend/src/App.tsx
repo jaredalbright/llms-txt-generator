@@ -1,8 +1,7 @@
 import Layout from './components/Layout';
 import URLInput from './components/URLInput';
-import ProgressView from './components/ProgressView';
+import PipelineProgress from './components/PipelineProgress';
 import EditorPreview from './components/EditorPreview';
-import RepromptBar from './components/RepromptBar';
 import ExportBar from './components/ExportBar';
 import { useJob } from './hooks/useJob';
 
@@ -10,13 +9,12 @@ export default function App() {
   const {
     submitJob,
     regenerate,
-    reprompt,
     markdown,
     setMarkdown,
     status,
     progress,
     error,
-    isReprompting,
+    steps,
     isValidating,
     isValid,
     validationIssues,
@@ -40,21 +38,14 @@ export default function App() {
         )}
 
         {/* Progress */}
-        {isLoading && status && (
-          <ProgressView
-            status={status}
-            pagesFound={progress?.pages_found}
-            message={progress?.message}
-          />
+        {steps.length > 0 && (
+          <PipelineProgress steps={steps} />
         )}
 
         {/* Editor + Preview */}
         {isComplete && (
           <>
             <EditorPreview markdown={markdown} onChange={setMarkdown} />
-
-            {/* Reprompt */}
-            <RepromptBar onSubmit={reprompt} disabled={isReprompting} />
 
             {/* Validation status */}
             {isValidating && (

@@ -1,3 +1,5 @@
+import asyncio
+import dataclasses
 from pydantic import BaseModel, HttpUrl
 from typing import Optional
 from enum import Enum
@@ -22,13 +24,7 @@ class GenerateResponse(BaseModel):
     job_id: str
 
 
-class RepromptRequest(BaseModel):
-    job_id: str
-    instruction: str
-    current_markdown: str
-
-
-class RepromptResponse(BaseModel):
+class DownloadRequest(BaseModel):
     markdown: str
 
 
@@ -60,3 +56,18 @@ class PageMeta(BaseModel):
     h1: Optional[str] = None
     uuid: Optional[str] = None
     parent_uuid: Optional[str] = None
+
+
+@dataclasses.dataclass
+class Job:
+    id: str
+    status: str
+    url: str
+    client_info: str | None = None
+    pages_found: int = 0
+    markdown: str | None = None
+    markdown_md: str | None = None
+    llms_ctx: str | None = None
+    child_pages: list = dataclasses.field(default_factory=list)
+    error: str | None = None
+    event_queue: asyncio.Queue | None = None

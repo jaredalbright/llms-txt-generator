@@ -19,16 +19,6 @@ export interface GenerateResponse {
   job_id: string;
 }
 
-export interface RepromptRequest {
-  job_id: string;
-  instruction: string;
-  current_markdown: string;
-}
-
-export interface RepromptResponse {
-  markdown: string;
-}
-
 export interface ValidateRequest {
   markdown: string;
 }
@@ -49,4 +39,15 @@ export interface PageMeta {
   title: string;
   description: string;
   h1: string;
+}
+
+export type PipelineStep = 'crawl' | 'metadata' | 'ai_categorize' | 'fetch_content' | 'assemble';
+export type StepState = 'pending' | 'active' | 'completed';
+
+export interface StepInfo {
+  step: PipelineStep;
+  state: StepState;
+  message: string;
+  summary?: string;
+  details: string[];
 }

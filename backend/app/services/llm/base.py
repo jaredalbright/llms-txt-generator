@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from app.models import PageMeta
+from app.services.progress import StepProgressReporter
 
 
 class LLMProvider(ABC):
@@ -10,14 +11,14 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def categorize_pages(
-        self, site_url: str, pages: list[PageMeta], *, client_info: str | None = None
+        self, site_url: str, pages: list[PageMeta], *, client_info: str | None = None, homepage_markdown: str | None = None, url_metadata: dict | None = None, reporter: StepProgressReporter | None = None
     ) -> dict:
         """
         Given a site URL and list of page metadata, return structured data:
         {
             "site_name": str,
-            "summary": str,
-            "context": str | None,
+            "description": str,
+            "details": str | None,
             "sections": [
                 {
                     "name": str,
@@ -29,18 +30,8 @@ class LLMProvider(ABC):
         pass
 
     @abstractmethod
-    async def reprompt(
-        self, current_markdown: str, instruction: str
-    ) -> str:
-        """
-        Given the current llms.txt markdown and a user instruction,
-        return the modified markdown.
-        """
-        pass
-
-    @abstractmethod
     async def summarize(
-        self, llms_ctx: str, site_url: str, current_structured_data: dict
+        self, llms_ctx: str, site_url: str, current_structured_data: dict, *, reporter: StepProgressReporter | None = None
     ) -> dict:
         """
         Given the expanded llms-ctx content, the site URL, and the current structured data,

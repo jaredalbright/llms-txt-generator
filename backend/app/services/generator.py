@@ -37,12 +37,12 @@ def _assemble_lines(structured_data: dict[str, Any], url_lookup: dict[str, str] 
     lines.append(f"# {structured_data['site_name']}")
     lines.append("")
 
-    if structured_data.get("summary"):
-        lines.append(f"> {structured_data['summary']}")
+    if structured_data.get("description"):
+        lines.append(f"> {structured_data['description']}")
         lines.append("")
 
-    if structured_data.get("context"):
-        lines.append(structured_data["context"])
+    if structured_data.get("details"):
+        lines.append(structured_data["details"])
         lines.append("")
 
     for section in structured_data.get("sections", []):
@@ -73,6 +73,15 @@ def assemble_md_markdown(structured_data: dict[str, Any], child_pages: list, sit
     return _assemble_lines(structured_data, url_lookup=lookup)
 
 
+def convert_base_to_md(base_markdown: str, child_pages: list, site_url: str) -> str:
+    """Convert edited base llms.txt to md version by replacing URLs that have .md files."""
+    lookup = _build_md_url_lookup(child_pages, site_url)
+    result = base_markdown
+    for original_url, md_url in lookup.items():
+        result = result.replace(f"]({original_url})", f"]({md_url})")
+    return result
+
+
 def assemble_llms_ctx(structured_data: dict[str, Any], child_pages: list) -> str:
     """
     Build llms-ctx.txt — expands linked URLs with actual page content
@@ -88,12 +97,12 @@ def assemble_llms_ctx(structured_data: dict[str, Any], child_pages: list) -> str
     lines.append(f"# {structured_data['site_name']}")
     lines.append("")
 
-    if structured_data.get("summary"):
-        lines.append(f"> {structured_data['summary']}")
+    if structured_data.get("description"):
+        lines.append(f"> {structured_data['description']}")
         lines.append("")
 
-    if structured_data.get("context"):
-        lines.append(structured_data["context"])
+    if structured_data.get("details"):
+        lines.append(structured_data["details"])
         lines.append("")
 
     for section in structured_data.get("sections", []):
