@@ -15,6 +15,11 @@ export default function App() {
   const [mode, setMode] = useSessionState<InputMode>('app_input_mode', 'url');
   const {
     submitJob,
+    regenerate,
+    reset,
+    loadCached,
+    generateNew,
+    cacheHit,
     markdown,
     setMarkdown,
     status,
@@ -31,6 +36,12 @@ export default function App() {
   const isLoading = status === 'crawling' || status === 'processing' || status === 'pending' || status === 'extracting_content' || status === 'summarizing';
   const isComplete = status === 'completed' && markdown;
   const exportDisabled = isValidating || !isValid;
+
+  const handleModeSwitch = (newMode: InputMode) => {
+    if (newMode === mode) return;
+    if (jobId) reset();
+    setMode(newMode);
+  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(markdown);
@@ -60,7 +71,7 @@ export default function App() {
           <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
             <button
               type="button"
-              onClick={() => setMode('url')}
+              onClick={() => handleModeSwitch('url')}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors cursor-pointer ${
                 mode === 'url'
                   ? 'bg-white text-gray-900 shadow-sm'
@@ -71,7 +82,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setMode('profound')}
+              onClick={() => handleModeSwitch('profound')}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors cursor-pointer ${
                 mode === 'profound'
                   ? 'bg-white text-gray-900 shadow-sm'
@@ -91,6 +102,42 @@ export default function App() {
             onGenerate={(url, promptsContext) => submitJob(url, undefined, promptsContext)}
             disabled={isLoading}
           />
+        )}
+
+        {/* Cache hit modal */}
+        {cacheHit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={generateNew}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div
+              className="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-8"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Previous result found</h2>
+                  <p className="text-sm text-profound-muted mt-1">
+                    A cached result exists for this URL. Would you like to load it or generate a fresh one?
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={loadCached}
+                    className="flex-1 bg-profound-blue text-white font-medium text-sm rounded-lg px-5 py-2.5 hover:bg-profound-blue/90 transition-colors cursor-pointer"
+                  >
+                    Load previous result
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generateNew}
+                    className="flex-1 bg-white text-gray-900 font-medium text-sm rounded-lg px-5 py-2.5 border border-profound-border hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    Generate new
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Error display */}

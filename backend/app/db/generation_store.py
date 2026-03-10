@@ -17,9 +17,11 @@ class GenerationStore(ABC):
     async def update(self, generation_id: str, **fields) -> None: ...
 
 
-class InMemoryGenerationStore(GenerationStore):
-    def __init__(self):
+class InMemoryGenerationCache(GenerationStore):
+    def __init__(self, cache_manager):
+        from app.db.cache import CacheManager
         self._generations: dict[str, Generation] = {}
+        self._cache_manager: CacheManager = cache_manager
 
     async def create(
         self, generation_id: str, url: str, client_info: str | None = None, prompts_context: list[str] | None = None
@@ -29,7 +31,10 @@ class InMemoryGenerationStore(GenerationStore):
         return gen
 
     async def get(self, generation_id: str) -> Generation | None:
-        return self._generations.get(generation_id)
+        gen = self._generations.get(generation_id)
+        if gen is not None:
+            self._cache_manager.touch(generation_id)
+        return gen
 
     async def update(self, generation_id: str, **fields) -> None:
         gen = self._generations.get(generation_id)
@@ -38,6 +43,14 @@ class InMemoryGenerationStore(GenerationStore):
         for key, value in fields.items():
             setattr(gen, key, value)
         gen.updated_at = datetime.now(timezone.utc)
+        self._cache_manager.touch(generation_id)
+
+    def _remove(self, generation_id: str) -> None:
+        self._generations.pop(generation_id, None)
+
+
+# Backward-compat alias
+InMemoryGenerationStore = InMemoryGenerationCache
 
 
 _store: GenerationStore | None = None

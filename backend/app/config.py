@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # BFS crawl
     bfs_max_level1_urls: int = 20
 
+    # Cache
+    cache_max_entries: int = 100
+
     # App
     frontend_url: str = "http://localhost:5173"
     mock_llm: bool = True                     # Skip real LLM calls, return fixture data

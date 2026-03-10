@@ -25,6 +25,7 @@ export default function URLInput({ onSubmit, disabled }: URLInputProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+       <h3 className="text-sm font-medium text-gray-900">Enter a URL</h3>
       <div className="flex gap-3">
         <div className="flex-1">
           <input
