@@ -24,11 +24,14 @@ export function useSSE(jobId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [steps, setSteps] = useState<StepInfo[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const closedIntentionallyRef = useRef(false);
 
   useEffect(() => {
     if (!jobId) return;
 
     setSteps([]);
+    setError(null);
+    closedIntentionallyRef.current = false;
 
     const apiUrl = import.meta.env.VITE_API_URL || '';
     const es = new EventSource(`${apiUrl}/api/generate/${jobId}/stream`);
@@ -37,6 +40,7 @@ export function useSSE(jobId: string | null) {
     es.addEventListener('progress', (e) => {
       const data: SSEProgress = JSON.parse(e.data);
       setStatus(data.status);
+      setError(null);
 
       if (data.step && data.step_state) {
         setSteps(prev => {
@@ -84,20 +88,31 @@ export function useSSE(jobId: string | null) {
       const data: SSEResult = JSON.parse(e.data);
       setStatus('completed');
       setResult(data);
+      closedIntentionallyRef.current = true;
       es.close();
     });
 
     es.addEventListener('error', (e) => {
+      // Ignore errors fired after we intentionally closed the connection
+      if (closedIntentionallyRef.current) return;
+
       try {
         const data = JSON.parse((e as MessageEvent).data);
         setError(data.message);
         setStatus('error');
+        closedIntentionallyRef.current = true;
+        es.close();
       } catch {
-        setError('Connection lost. Reconnecting...');
+        // Native connection error — EventSource will auto-reconnect
+        // Only show if the connection is actually closed (not reconnecting)
+        if (es.readyState === EventSource.CLOSED) {
+          setError('Connection lost.');
+        }
       }
     });
 
     return () => {
+      closedIntentionallyRef.current = true;
       es.close();
       eventSourceRef.current = null;
     };

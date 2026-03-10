@@ -5,8 +5,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import generate, validate
 from app.config import settings
-from app.db import InMemoryJobRepository, init_job_repo
-from app.db import InMemoryGenerationStore, init_generation_store
+from app.db import (
+    CacheManager, init_cache_manager,
+    InMemoryJobCache, init_job_repo,
+    InMemoryGenerationCache, init_generation_store,
+)
 
 # Configure root logger
 logging.basicConfig(
@@ -24,8 +27,13 @@ logger = logging.getLogger("app")
 
 app = FastAPI(title="llms.txt Generator API")
 
-init_job_repo(InMemoryJobRepository())
-init_generation_store(InMemoryGenerationStore())
+cache_mgr = CacheManager(max_entries=settings.cache_max_entries)
+job_cache = InMemoryJobCache(cache_mgr)
+gen_cache = InMemoryGenerationCache(cache_mgr)
+cache_mgr.register_stores(job_cache, gen_cache)
+init_cache_manager(cache_mgr)
+init_job_repo(job_cache)
+init_generation_store(gen_cache)
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,6 +53,7 @@ async def log_startup():
     logger.info("  LLM provider: %s (model: %s)", settings.llm_provider, settings.llm_model)
     logger.info("  Mock LLM: %s", settings.mock_llm)
     logger.info("  Max pages: %d, Crawl timeout: %ds", settings.max_pages, settings.crawl_timeout)
+    logger.info("  Cache max entries: %d", settings.cache_max_entries)
 
 
 @app.middleware("http")

@@ -19,10 +19,13 @@ class GenerateRequest(BaseModel):
     url: HttpUrl
     client_info: Optional[str] = None
     prompts_context: Optional[list[str]] = None
+    force: bool = False
 
 
 class GenerateResponse(BaseModel):
     job_id: str
+    cached: bool = False
+    markdown: Optional[str] = None
 
 
 class DownloadRequest(BaseModel):

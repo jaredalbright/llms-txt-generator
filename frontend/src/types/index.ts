@@ -14,6 +14,7 @@ export interface GenerateRequest {
   url: string;
   client_info?: string;
   prompts_context?: string[];
+  force?: boolean;
 }
 
 // Profound API types
@@ -42,6 +43,8 @@ export interface ProfoundPrompt {
 
 export interface GenerateResponse {
   job_id: string;
+  cached?: boolean;
+  markdown?: string;
 }
 
 export interface ValidateRequest {

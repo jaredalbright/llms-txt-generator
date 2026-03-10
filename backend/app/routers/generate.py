@@ -13,6 +13,7 @@ from app.models import (
     DownloadRequest,
 )
 from app.db.repository import JobRepository, get_job_repo
+from app.db.cache import get_cache_manager
 from app.services.pipeline import run_pipeline
 from app.services.generator import slugify, convert_base_to_md
 
@@ -23,6 +24,16 @@ router = APIRouter()
 
 @router.post("/generate", response_model=GenerateResponse)
 async def create_job(req: GenerateRequest, repo: JobRepository = Depends(get_job_repo)):
+    # Cache-hit check
+    if not req.force:
+        cache_mgr = get_cache_manager()
+        cached_job_id = cache_mgr.lookup_url(str(req.url))
+        if cached_job_id:
+            cached_job = await repo.get(cached_job_id)
+            if cached_job and cached_job.status == "completed" and cached_job.markdown:
+                logger.info("Cache hit for URL %s → job %s", req.url, cached_job_id[:8])
+                return GenerateResponse(job_id=cached_job_id, cached=True, markdown=cached_job.markdown)
+
     job_id = str(uuid.uuid4())
     event_queue = asyncio.Queue()
 
