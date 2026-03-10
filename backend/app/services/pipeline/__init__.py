@@ -2,8 +2,10 @@ import asyncio
 import logging
 import traceback
 
+from app.config import settings
 from app.db.repository import JobRepository
 from app.db.generation_store import get_generation_store
+from app.services.errors import sanitize_error
 from app.services.pipeline.dag import PipelineDAG
 from app.services.pipeline.nodes import (
     CrawlNode,
@@ -54,7 +56,10 @@ async def run_pipeline(job_id: str, url: str, repo: JobRepository, prompts_conte
 
     try:
         dag = build_default_dag()
-        await dag.execute(generation, queue)
+        await asyncio.wait_for(
+            dag.execute(generation, queue),
+            timeout=settings.job_timeout,
+        )
 
         # Sync final outputs back to the job for backward compatibility
         await repo.update(
@@ -77,10 +82,12 @@ async def run_pipeline(job_id: str, url: str, repo: JobRepository, prompts_conte
         logger.error("[%s] Pipeline failed: %s", job_id[:8], e)
         logger.debug("[%s] Traceback:\n%s", job_id[:8], traceback.format_exc())
 
+        user_message = sanitize_error(e)
+
         await gen_store.update(job_id, error=str(e))
         await repo.update(job_id, status="error", error=str(e))
 
         await queue.put({
             "type": "error",
-            "message": f"Generation failed: {str(e)}",
+            "message": f"Generation failed: {user_message}",
         })

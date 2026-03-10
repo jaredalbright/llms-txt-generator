@@ -41,7 +41,3 @@ class InMemoryJobCache(JobRepository):
 
     def _remove(self, job_id: str) -> None:
         self._jobs.pop(job_id, None)
-
-
-# Backward-compat alias
-InMemoryJobRepository = InMemoryJobCache

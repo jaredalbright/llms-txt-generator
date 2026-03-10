@@ -185,9 +185,7 @@ function StepRow({ step }: { step: StepInfo }) {
           disabled={step.state !== 'completed' || !hasDetails}
         >
           <span className={`text-sm font-medium ${
-            step.state === 'active' ? 'text-profound-dark' :
-            step.state === 'completed' ? 'text-profound-dark' :
-            'text-gray-400'
+            step.state === 'pending' ? 'text-gray-400' : 'text-gray-900'
           }`}>
             {STEP_LABELS[step.step]}
           </span>

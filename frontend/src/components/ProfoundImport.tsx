@@ -106,7 +106,7 @@ export default function ProfoundImport({ onGenerate, disabled }: ProfoundImportP
   return (
     <div className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3" role="alert">
           <p className="text-red-600 text-sm">{error}</p>
         </div>
       )}
@@ -121,6 +121,7 @@ export default function ProfoundImport({ onGenerate, disabled }: ProfoundImportP
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               disabled={disabled || loading}
+              aria-label="Profound API Key"
               className="flex-1 bg-white border border-profound-border rounded-lg px-4 py-3 text-gray-900 focus:border-profound-blue focus:ring-1 focus:ring-profound-blue outline-none transition-colors disabled:opacity-50"
             />
             <button

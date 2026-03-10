@@ -49,10 +49,6 @@ class InMemoryGenerationCache(GenerationStore):
         self._generations.pop(generation_id, None)
 
 
-# Backward-compat alias
-InMemoryGenerationStore = InMemoryGenerationCache
-
-
 _store: GenerationStore | None = None
 
 
@@ -62,5 +58,6 @@ def init_generation_store(store: GenerationStore) -> None:
 
 
 def get_generation_store() -> GenerationStore:
-    assert _store is not None, "GenerationStore not initialized"
+    if _store is None:
+        raise RuntimeError("GenerationStore not initialized")
     return _store

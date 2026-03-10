@@ -11,22 +11,34 @@ def slugify(text: str) -> str:
     return text[:80] or "page"
 
 
-def _build_md_url_lookup(child_pages: list, site_url: str) -> dict[str, str]:
-    """Build URL -> https://site.com/slug.md lookup from child pages."""
-    parsed = urlparse(site_url)
-    base = f"{parsed.scheme}://{parsed.netloc}"
-    lookup: dict[str, str] = {}
+def _cp_attr(cp: Any, key: str) -> Any:
+    """Access an attribute on a child page, whether it's an object or dict."""
+    return getattr(cp, key) if hasattr(cp, key) else cp[key]
+
+
+def deduplicate_slugs(child_pages: list) -> list[tuple[str, Any]]:
+    """Return (unique_slug, cp) pairs with deduplicated slugs."""
     seen_names: set[str] = set()
+    result: list[tuple[str, Any]] = []
     for cp in child_pages:
-        name = slugify(cp.title if hasattr(cp, 'title') else cp['title'])
+        name = slugify(_cp_attr(cp, 'title'))
         base_name = name
         counter = 1
         while name in seen_names:
             name = f"{base_name}-{counter}"
             counter += 1
         seen_names.add(name)
-        original_url = cp.url if hasattr(cp, 'url') else cp['url']
-        lookup[original_url] = f"{base}/{name}.md"
+        result.append((name, cp))
+    return result
+
+
+def _build_md_url_lookup(child_pages: list, site_url: str) -> dict[str, str]:
+    """Build URL -> https://site.com/slug.md lookup from child pages."""
+    parsed = urlparse(site_url)
+    base = f"{parsed.scheme}://{parsed.netloc}"
+    lookup: dict[str, str] = {}
+    for name, cp in deduplicate_slugs(child_pages):
+        lookup[_cp_attr(cp, 'url')] = f"{base}/{name}.md"
     return lookup
 
 
@@ -88,7 +100,7 @@ def assemble_llms_ctx(structured_data: dict[str, Any], child_pages: list) -> str
     using XML <doc> tags, suitable for LLM consumption.
     """
     content_lookup = {
-        (cp.url if hasattr(cp, 'url') else cp['url']): cp
+        _cp_attr(cp, 'url'): cp
         for cp in child_pages
     }
 
@@ -113,8 +125,8 @@ def assemble_llms_ctx(structured_data: dict[str, Any], child_pages: list) -> str
             title = page.get("title", url)
             cp = content_lookup.get(url)
             if cp:
-                cp_title = cp.title if hasattr(cp, 'title') else cp['title']
-                cp_content = cp.markdown_content if hasattr(cp, 'markdown_content') else cp['markdown_content']
+                cp_title = _cp_attr(cp, 'title')
+                cp_content = _cp_attr(cp, 'markdown_content')
                 lines.append(f'<doc url="{url}" title="{cp_title}">')
                 lines.append(cp_content)
                 lines.append("</doc>")

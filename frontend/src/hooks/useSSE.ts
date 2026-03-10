@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import type { PipelineStep, StepInfo } from '../types';
+import type { JobStatus, PipelineStep, StepInfo } from '../types';
 
 interface SSEProgress {
-  status: 'pending' | 'crawling' | 'processing' | 'extracting_content' | 'summarizing' | 'completed' | 'error';
+  status: JobStatus;
   pages_found?: number;
   message?: string;
   step?: PipelineStep;
@@ -23,7 +23,6 @@ export function useSSE(jobId: string | null) {
   const [result, setResult] = useState<SSEResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [steps, setSteps] = useState<StepInfo[]>([]);
-  const eventSourceRef = useRef<EventSource | null>(null);
   const closedIntentionallyRef = useRef(false);
 
   useEffect(() => {
@@ -35,7 +34,6 @@ export function useSSE(jobId: string | null) {
 
     const apiUrl = import.meta.env.VITE_API_URL || '';
     const es = new EventSource(`${apiUrl}/api/generate/${jobId}/stream`);
-    eventSourceRef.current = es;
 
     es.addEventListener('progress', (e) => {
       const data: SSEProgress = JSON.parse(e.data);
@@ -96,25 +94,31 @@ export function useSSE(jobId: string | null) {
       // Ignore errors fired after we intentionally closed the connection
       if (closedIntentionallyRef.current) return;
 
-      try {
-        const data = JSON.parse((e as MessageEvent).data);
-        setError(data.message);
-        setStatus('error');
-        closedIntentionallyRef.current = true;
-        es.close();
-      } catch {
-        // Native connection error — EventSource will auto-reconnect
-        // Only show if the connection is actually closed (not reconnecting)
-        if (es.readyState === EventSource.CLOSED) {
-          setError('Connection lost.');
+      // Server-sent error events include data; native connection errors don't
+      const messageEvent = e as MessageEvent;
+      if (messageEvent.data) {
+        try {
+          const data = JSON.parse(messageEvent.data);
+          setError(data.message);
+          setStatus('error');
+          closedIntentionallyRef.current = true;
+          es.close();
+          return;
+        } catch {
+          // Failed to parse — treat as connection error below
         }
+      }
+
+      // Native connection error — EventSource will auto-reconnect
+      // Only show if the connection is actually closed (not reconnecting)
+      if (es.readyState === EventSource.CLOSED) {
+        setError('Connection lost.');
       }
     });
 
     return () => {
       closedIntentionallyRef.current = true;
       es.close();
-      eventSourceRef.current = null;
     };
   }, [jobId]);
 

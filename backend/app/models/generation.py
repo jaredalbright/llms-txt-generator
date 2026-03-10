@@ -2,6 +2,8 @@ import dataclasses
 from datetime import datetime, timezone
 from typing import Any
 
+from app.models.base import ChildPageContent, PageMeta
+
 
 @dataclasses.dataclass
 class Generation:
@@ -20,8 +22,8 @@ class Generation:
     # Crawl output
     discovered_urls: list[str] = dataclasses.field(default_factory=list)
 
-    # Metadata extraction output (list[PageMeta])
-    pages: list = dataclasses.field(default_factory=list)
+    # Metadata extraction output
+    pages: list[PageMeta] = dataclasses.field(default_factory=list)
 
     # Homepage content as markdown
     homepage_markdown: str | None = None
@@ -29,8 +31,8 @@ class Generation:
     # LLM categorization output
     structured_data: dict[str, Any] | None = None
 
-    # Fetched child page content (list[ChildPageContent])
-    child_pages: list = dataclasses.field(default_factory=list)
+    # Fetched child page content
+    child_pages: list[ChildPageContent] = dataclasses.field(default_factory=list)
 
     # HTML cache: url -> raw HTML (avoids re-fetching pages)
     _html_cache: dict[str, str] = dataclasses.field(default_factory=dict)

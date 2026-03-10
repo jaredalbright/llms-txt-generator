@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from './components/Layout';
 import URLInput from './components/URLInput';
 import ProfoundImport from './components/ProfoundImport';
@@ -31,6 +31,16 @@ export default function App() {
   } = useJob();
 
   const [showModal, setShowModal] = useState(false);
+
+  // Close cache hit modal on Escape
+  const handleEscape = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && cacheHit) generateNew();
+  }, [cacheHit, generateNew]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [handleEscape]);
 
   const isLoading = status === 'crawling' || status === 'processing' || status === 'pending' || status === 'extracting_content' || status === 'summarizing';
   const isComplete = status === 'completed' && markdown;
@@ -67,9 +77,11 @@ export default function App() {
       <div className="space-y-6">
         {/* Mode Toggle */}
         {!isLoading && (
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit" role="tablist" aria-label="Input mode">
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'url'}
               onClick={() => handleModeSwitch('url')}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors cursor-pointer ${
                 mode === 'url'
@@ -81,6 +93,8 @@ export default function App() {
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'profound'}
               onClick={() => handleModeSwitch('profound')}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors cursor-pointer ${
                 mode === 'profound'
@@ -105,7 +119,7 @@ export default function App() {
 
         {/* Cache hit modal */}
         {cacheHit && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={generateNew}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={generateNew} role="dialog" aria-label="Previous result found">
             <div className="absolute inset-0 bg-black/40" />
             <div
               className="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-8"
@@ -141,7 +155,7 @@ export default function App() {
 
         {/* Error display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4" role="alert">
             <p className="text-red-600 text-sm">{error}</p>
           </div>
         )}
@@ -165,10 +179,10 @@ export default function App() {
 
             {/* Validation status */}
             {isValidating && (
-              <p className="text-sm text-profound-muted">Validating...</p>
+              <p className="text-sm text-profound-muted" aria-live="polite">Validating...</p>
             )}
             {!isValidating && !isValid && validationIssues.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-1">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-1" role="alert">
                 <p className="text-red-600 text-sm font-medium">Validation issues found:</p>
                 {validationIssues.map((issue, i) => (
                   <p key={i} className="text-sm text-red-600">

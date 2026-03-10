@@ -13,15 +13,17 @@ export default function PostDownloadModal({ onClose, isProfoundUser }: PostDownl
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-label="Download instructions">
       <div className="absolute inset-0 bg-black/40" />
       <div
         className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-8 animate-in fade-in zoom-in duration-200"
         onClick={e => e.stopPropagation()}
       >
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label="Close dialog"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -50,7 +52,7 @@ export default function PostDownloadModal({ onClose, isProfoundUser }: PostDownl
               <span>Use the <code className="text-xs bg-gray-100 rounded px-1.5 py-0.5 font-mono">llms.txt</code> file found under <code className="text-xs bg-gray-100 rounded px-1.5 py-0.5 font-mono">md/</code> to serve your site's llms.txt file</span>
             </li>
             <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-profound-blue/10 text-profound-blue text-xs font-semibold flex items-center justify-center">2</span>
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-profound-blue/10 text-profound-blue text-xs font-semibold flex items-center justify-center">3</span>
               <span>Optionally upload <code className="text-xs bg-gray-100 rounded px-1.5 py-0.5 font-mono">llms-ctx.txt</code> for expanded context that AI models can use to deeply understand your site</span>
             </li>
           </ol>

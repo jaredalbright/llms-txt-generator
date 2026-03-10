@@ -24,5 +24,6 @@ def init_job_repo(repo: JobRepository) -> None:
 
 
 def get_job_repo() -> JobRepository:
-    assert _repo is not None, "JobRepository not initialized"
+    if _repo is None:
+        raise RuntimeError("JobRepository not initialized")
     return _repo

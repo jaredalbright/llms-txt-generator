@@ -27,12 +27,20 @@ function ExportDropdown({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open]);
 
   const handleCopy = async () => {
     if (onCopy) {
@@ -49,6 +57,9 @@ function ExportDropdown({
         type="button"
         onClick={() => setOpen(!open)}
         disabled={disabled}
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-label="Export options"
         className="inline-flex items-center gap-1.5 border border-gray-200 rounded-md px-2.5 py-1 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {/* Download icon */}
@@ -141,28 +152,32 @@ export default function EditorPreview({
       </div>
 
       {!expanded && (
-        <div
-          className="absolute bottom-0 left-0 right-0 group cursor-pointer"
+        <button
+          type="button"
           onClick={() => setExpanded(true)}
+          aria-label="Expand editor"
+          className="absolute bottom-0 left-0 right-0 group cursor-pointer bg-transparent border-none p-0"
         >
           {/* Gradient fade */}
           <div className="h-20 bg-gradient-to-t from-white to-transparent pointer-events-none" />
-          {/* Expand button */}
+          {/* Expand label */}
           <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-3 opacity-0 group-hover:opacity-100 transition-opacity">
             <span className="bg-gray-100 text-gray-700 text-xs font-medium px-4 py-1.5 rounded-full">
               Click to expand
             </span>
           </div>
-        </div>
+        </button>
       )}
 
       {expanded && (
-        <div
-          className="flex justify-center py-2 border-t border-profound-border cursor-pointer hover:bg-gray-50 transition-colors"
+        <button
+          type="button"
           onClick={() => setExpanded(false)}
+          aria-label="Collapse editor"
+          className="flex justify-center w-full py-2 border-t border-profound-border cursor-pointer hover:bg-gray-50 transition-colors bg-transparent"
         >
           <span className="text-profound-muted text-xs font-medium">Collapse</span>
-        </div>
+        </button>
       )}
     </div>
   );

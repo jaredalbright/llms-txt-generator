@@ -28,8 +28,11 @@ async def fetch_url(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> httpx.Resp
             if resp.status_code != 200:
                 return None
             return resp
-    except Exception as e:
+    except httpx.HTTPError as e:
         logger.warning("Failed to fetch %s: %s", url, e)
+        return None
+    except Exception as e:
+        logger.exception("Unexpected error fetching %s: %s", url, e)
         return None
 
 
@@ -44,7 +47,7 @@ async def fetch_sitemap_urls(base_url: str) -> list[str]:
         root = ElementTree.fromstring(resp.text)
         ns = {"ns": "http://www.sitemaps.org/schemas/sitemap/0.9"}
         return [loc.text for loc in root.findall(".//ns:loc", ns) if loc.text]
-    except Exception as e:
+    except ElementTree.ParseError as e:
         logger.warning("Sitemap parse failed for %s: %s", sitemap_url, e)
         return []
 
@@ -77,7 +80,7 @@ async def fetch_urls_concurrent(
                     result = None
                 else:
                     result = handler(url, resp)
-            except Exception as e:
+            except httpx.HTTPError as e:
                 logger.warning("Failed to fetch %s: %s", url, e)
                 result = None
 

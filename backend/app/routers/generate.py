@@ -4,7 +4,7 @@ import json
 import logging
 import uuid
 import zipfile
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 from app.models import (
@@ -15,7 +15,7 @@ from app.models import (
 from app.db.repository import JobRepository, get_job_repo
 from app.db.cache import get_cache_manager
 from app.services.pipeline import run_pipeline
-from app.services.generator import slugify, convert_base_to_md
+from app.services.generator import convert_base_to_md, deduplicate_slugs, _cp_attr
 
 logger = logging.getLogger("app.router.generate")
 
@@ -52,7 +52,7 @@ async def stream_job(job_id: str, repo: JobRepository = Depends(get_job_repo)):
     job = await repo.get(job_id)
     if job is None:
         logger.warning("SSE stream requested for unknown job: %s", job_id)
-        return {"error": "Job not found"}
+        raise HTTPException(status_code=404, detail="Job not found")
 
     logger.info("SSE stream opened for job %s (current status: %s)", job_id, job.status)
 
@@ -113,10 +113,10 @@ async def download_zip(job_id: str, req: DownloadRequest, repo: JobRepository = 
     """
     job = await repo.get(job_id)
     if job is None:
-        return {"error": "Job not found"}
+        raise HTTPException(status_code=404, detail="Job not found")
 
     if job.status != "completed":
-        return {"error": "Job not completed"}
+        raise HTTPException(status_code=409, detail="Job not completed")
 
     child_pages = job.child_pages or []
     site_url = job.url
@@ -141,18 +141,8 @@ async def download_zip(job_id: str, req: DownloadRequest, repo: JobRepository = 
             zf.writestr("llms-ctx.txt", job.llms_ctx)
 
         # Individual .md files
-        seen_names: set[str] = set()
-        for cp in child_pages:
-            name = slugify(cp.title if hasattr(cp, 'title') else cp['title'])
-            base_name = name
-            counter = 1
-            while name in seen_names:
-                name = f"{base_name}-{counter}"
-                counter += 1
-            seen_names.add(name)
-
-            content = cp.markdown_content if hasattr(cp, 'markdown_content') else cp['markdown_content']
-            zf.writestr(f"md/{name}.md", content)
+        for name, cp in deduplicate_slugs(child_pages):
+            zf.writestr(f"md/{name}.md", _cp_attr(cp, 'markdown_content'))
 
     buf.seek(0)
     return StreamingResponse(
