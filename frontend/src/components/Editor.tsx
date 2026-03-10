@@ -14,6 +14,7 @@ export default function Editor({ value, onChange, readOnly }: EditorProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         readOnly={readOnly}
+        aria-label="Markdown editor"
         className={`flex-1 w-full bg-white p-4 font-mono text-sm text-gray-900 resize-none outline-none ${readOnly ? 'cursor-default' : ''}`}
         spellCheck={false}
       />

@@ -29,13 +29,14 @@ export default function URLInput({ onSubmit, disabled }: URLInputProps) {
       <div className="flex gap-3">
         <div className="flex-1">
           <input
-            type="text"
+            type="url"
             value={url}
             onChange={(e) => {
               setUrl(e.target.value);
               setValidationError('');
             }}
             placeholder="https://example.com"
+            aria-label="Website URL"
             disabled={disabled}
             className="w-full bg-white border border-profound-border rounded-lg px-4 py-3 text-gray-900 placeholder:text-profound-muted focus:border-profound-blue focus:ring-1 focus:ring-profound-blue outline-none transition-colors disabled:opacity-50"
           />

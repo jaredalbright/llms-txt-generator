@@ -73,6 +73,6 @@ class Job:
     markdown: str | None = None
     markdown_md: str | None = None
     llms_ctx: str | None = None
-    child_pages: list = dataclasses.field(default_factory=list)
+    child_pages: list[ChildPageContent] = dataclasses.field(default_factory=list)
     error: str | None = None
     event_queue: asyncio.Queue | None = None

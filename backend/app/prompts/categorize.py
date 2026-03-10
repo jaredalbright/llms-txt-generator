@@ -5,14 +5,7 @@ LLMS_TXT_SPEC = """The llms.txt format follows this structure:
 - Zero or more markdown sections delimited by H2 headers, containing "file lists" of URLs where further detail is available
 - Each "file list" is a markdown list, containing a required markdown hyperlink [name](url), then optionally a : and notes about the file"""
 
-CATEGORIZE_SYSTEM_PROMPT = f"""You are an expert at analyzing website structure. You will receive
-a list of pages from a website (URL, title, description) along with the homepage content
-converted to markdown. Your job is to produce structured data that will be used to generate
-an llms.txt file.
-
-{LLMS_TXT_SPEC}
-
-Your specific tasks:
+_CATEGORIZE_TASKS = """Your specific tasks:
 
 1. Choose a clean, human-readable site name (not the raw domain). This becomes the H1.
 2. Write a one-sentence "description" — a short summary of the project containing key information
@@ -24,12 +17,9 @@ Your specific tasks:
 4. Group the pages into logical sections using H2 names like: Docs, API Reference, Guides,
    Blog, About, Pricing, Legal, Support, etc. Use whatever section names best fit the content.
 5. Decide which pages are secondary/supplementary and put them in an "Optional" section.
-6. For pages missing descriptions, write a concise one-sentence description.
+6. For pages missing descriptions, write a concise one-sentence description."""
 
-Use the homepage content to better understand the site's purpose, product, and structure.
-This will help you write a more accurate description, details, and better categorize the pages.
-
-Return ONLY valid JSON with this exact structure (no markdown fences, no explanation):
+_CATEGORIZE_JSON_SCHEMA = """Return ONLY valid JSON with this exact structure (no markdown fences, no explanation):
 {{
   "site_name": "Human Readable Site Name",
   "description": "One sentence describing what this site/project is.",
@@ -42,9 +32,9 @@ Return ONLY valid JSON with this exact structure (no markdown fences, no explana
       ]
     }}
   ]
-}}
+}}"""
 
-Guidelines:
+_CATEGORIZE_GUIDELINES = """Guidelines:
 - "description" is a single sentence for the blockquote. "details" is richer body text — they serve different purposes.
 - "details" should include keywords and concepts relevant to the site so LLMs can surface it in search.
 - "details" can use any markdown formatting (paragraphs, lists, bold, etc.) except headings.
@@ -59,61 +49,47 @@ Guidelines:
 - Page descriptions should be concise (under 15 words) and informative.
 - Site name should be the product/company name, not the domain."""
 
-CATEGORIZE_SYSTEM_PROMPT_WITH_TOOL = f"""You are an expert at analyzing website structure. You will receive
+_INLINE_INTRO = """You are an expert at analyzing website structure. You will receive
+a list of pages from a website (URL, title, description) along with the homepage content
+converted to markdown. Your job is to produce structured data that will be used to generate
+an llms.txt file."""
+
+_INLINE_HOMEPAGE_INSTRUCTION = """Use the homepage content to better understand the site's purpose, product, and structure.
+This will help you write a more accurate description, details, and better categorize the pages."""
+
+_TOOL_INTRO = """You are an expert at analyzing website structure. You will receive
 a list of pages from a website (URL, title, description). The homepage content is very large,
 so it has NOT been included inline. Instead, you have a tool called `search_homepage` that lets
 you search through the homepage content by keyword. Use it to find relevant information about the
-site's purpose, products, and structure.
+site's purpose, products, and structure."""
+
+_TOOL_HOMEPAGE_INSTRUCTION = """Start by using the search_homepage tool to understand what this site is about (try queries like
+the site name, "about", "features", "product", etc.). Then use the page list and your findings
+to produce the categorization."""
+
+CATEGORIZE_SYSTEM_PROMPT = f"""{_INLINE_INTRO}
 
 {LLMS_TXT_SPEC}
 
-Your specific tasks:
+{_CATEGORIZE_TASKS}
 
-1. Choose a clean, human-readable site name (not the raw domain). This becomes the H1.
-2. Write a one-sentence "description" — a short summary of the project containing key information
-   necessary for understanding the rest of the file. This becomes the blockquote.
-3. Write "details" — additional context about the project that helps LLMs understand and discover
-   the site. This can be any markdown except headings: paragraphs, bullet lists, bold text, etc.
-   Include key features, technologies, use cases, or anything that would help an LLM find this
-   site when searching. This becomes the body text between the blockquote and the H2 sections.
-4. Group the pages into logical sections using H2 names like: Docs, API Reference, Guides,
-   Blog, About, Pricing, Legal, Support, etc. Use whatever section names best fit the content.
-5. Decide which pages are secondary/supplementary and put them in an "Optional" section.
-6. For pages missing descriptions, write a concise one-sentence description.
+{_INLINE_HOMEPAGE_INSTRUCTION}
 
-Start by using the search_homepage tool to understand what this site is about (try queries like
-the site name, "about", "features", "product", etc.). Then use the page list and your findings
-to produce the categorization.
+{_CATEGORIZE_JSON_SCHEMA}
 
-Return ONLY valid JSON with this exact structure (no markdown fences, no explanation):
-{{
-  "site_name": "Human Readable Site Name",
-  "description": "One sentence describing what this site/project is.",
-  "details": "Markdown body text (paragraphs, lists, etc. — no headings) providing more detailed information about the project. Include key features, technologies, and concepts to make the site discoverable.",
-  "sections": [
-    {{
-      "name": "Section Name",
-      "pages": [
-        {{"title": "Page Title", "url": "https://...", "description": "What this page covers."}}
-      ]
-    }}
-  ]
-}}
+{_CATEGORIZE_GUIDELINES}"""
 
-Guidelines:
-- "description" is a single sentence for the blockquote. "details" is richer body text — they serve different purposes.
-- "details" should include keywords and concepts relevant to the site so LLMs can surface it in search.
-- "details" can use any markdown formatting (paragraphs, lists, bold, etc.) except headings.
-- Keep section count between 2-6. Don't over-categorize.
-- Every page must appear in exactly one section.
-- The "Optional" section (if used) should contain genuinely secondary content: legal pages,
-  old blog posts, changelog entries, etc. The "Optional" section MUST always be the last section.
-- If there are more than 10 pages, you should almost always use an "Optional" section. Move
-  lower-value pages there (legal, changelog, careers, terms, privacy, old blog posts, etc.)
-  so the main sections stay focused and scannable. Aim for no more than ~10 links in the
-  non-Optional sections combined.
-- Page descriptions should be concise (under 15 words) and informative.
-- Site name should be the product/company name, not the domain."""
+CATEGORIZE_SYSTEM_PROMPT_WITH_TOOL = f"""{_TOOL_INTRO}
+
+{LLMS_TXT_SPEC}
+
+{_CATEGORIZE_TASKS}
+
+{_TOOL_HOMEPAGE_INSTRUCTION}
+
+{_CATEGORIZE_JSON_SCHEMA}
+
+{_CATEGORIZE_GUIDELINES}"""
 
 SEARCH_HOMEPAGE_TOOL = {
     "name": "search_homepage",

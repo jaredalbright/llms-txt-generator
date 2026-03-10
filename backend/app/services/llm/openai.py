@@ -3,27 +3,14 @@ import json
 import logging
 from openai import AsyncOpenAI
 from app.services.llm.base import LLMProvider
+from app.services.llm.utils import extract_json, DETAIL_CHAR_INTERVAL, DETAIL_TIME_INTERVAL
 from app.services.progress import StepProgressReporter
 from app.models import PageMeta
 from app.config import settings
 from app.prompts.categorize import CATEGORIZE_SYSTEM_PROMPT, build_categorize_user_prompt
 from app.prompts.summarize import SUMMARIZE_SYSTEM_PROMPT, build_summarize_user_prompt
 
-
 logger = logging.getLogger("app.llm.openai")
-
-DETAIL_CHAR_INTERVAL = 200
-DETAIL_TIME_INTERVAL = 8
-
-
-def _extract_json(text: str) -> dict:
-    """Extract JSON from LLM response text, handling markdown code fences."""
-    if "```json" in text:
-        text = text.split("```json")[1].split("```")[0]
-    elif "```" in text:
-        text = text.split("```")[1].split("```")[0]
-    return json.loads(text.strip())
-
 
 class OpenAIProvider(LLMProvider):
     def __init__(self):
@@ -106,7 +93,7 @@ class OpenAIProvider(LLMProvider):
         )
 
         logger.debug("Raw LLM response (%d chars): %s", len(text), text[:200])
-        result = _extract_json(text)
+        result = extract_json(text)
         logger.info("Categorization complete: %d sections", len(result.get("sections", [])))
         return result
 
@@ -135,6 +122,6 @@ class OpenAIProvider(LLMProvider):
         )
 
         logger.debug("Summarize response (%d chars): %s", len(text), text[:200])
-        result = _extract_json(text)
+        result = extract_json(text)
         logger.info("Summarize complete: %d sections", len(result.get("sections", [])))
         return result

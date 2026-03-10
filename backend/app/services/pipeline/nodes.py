@@ -2,6 +2,8 @@ import asyncio
 import logging
 from urllib.parse import urlparse
 
+import httpx
+
 from app.config import settings
 from app.models.generation import Generation
 from app.services.pipeline.node import PipelineNode
@@ -217,7 +219,7 @@ class FetchHomepageNode(PipelineNode):
                         f"Homepage: {len(result.markdown_content)} chars"
                     )
                     return
-        except Exception as e:
+        except httpx.HTTPError as e:
             logger.warning(
                 "[%s] Homepage fetch failed: %s", generation.id[:8], e
             )
@@ -348,7 +350,7 @@ class SummarizeNode(PipelineNode):
                     generation.structured_data, generation.child_pages
                 )
                 await reporter.log(f"Context rebuilt: {len(generation.llms_ctx)} chars")
-            except Exception as e:
+            except (ValueError, KeyError) as e:
                 logger.warning(
                     "[%s] Summarize pass failed, using original data: %s",
                     generation.id[:8], e,

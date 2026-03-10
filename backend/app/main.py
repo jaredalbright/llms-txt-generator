@@ -1,5 +1,6 @@
 import logging
 import sys
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,7 +26,18 @@ logging.getLogger("uvicorn.access").setLevel(logging.INFO)
 
 logger = logging.getLogger("app")
 
-app = FastAPI(title="llms.txt Generator API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting llms.txt Generator API")
+    logger.info("  LLM provider: %s (model: %s)", settings.llm_provider, settings.llm_model)
+    logger.info("  Mock LLM: %s", settings.mock_llm)
+    logger.info("  Max pages: %d, Crawl timeout: %ds", settings.max_pages, settings.crawl_timeout)
+    logger.info("  Cache max entries: %d", settings.cache_max_entries)
+    yield
+
+
+app = FastAPI(title="llms.txt Generator API", lifespan=lifespan)
 
 cache_mgr = CacheManager(max_entries=settings.cache_max_entries)
 job_cache = InMemoryJobCache(cache_mgr)
@@ -37,7 +49,7 @@ init_generation_store(gen_cache)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Lock down to frontend domain in production
+    allow_origins=[settings.frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,15 +57,6 @@ app.add_middleware(
 
 app.include_router(generate.router, prefix="/api")
 app.include_router(validate.router, prefix="/api")
-
-
-@app.on_event("startup")
-async def log_startup():
-    logger.info("Starting llms.txt Generator API")
-    logger.info("  LLM provider: %s (model: %s)", settings.llm_provider, settings.llm_model)
-    logger.info("  Mock LLM: %s", settings.mock_llm)
-    logger.info("  Max pages: %d, Crawl timeout: %ds", settings.max_pages, settings.crawl_timeout)
-    logger.info("  Cache max entries: %d", settings.cache_max_entries)
 
 
 @app.middleware("http")

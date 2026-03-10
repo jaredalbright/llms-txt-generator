@@ -1,8 +1,8 @@
 import asyncio
-import json
 import logging
 import anthropic
 from app.services.llm.base import LLMProvider
+from app.services.llm.utils import extract_json, DETAIL_CHAR_INTERVAL, DETAIL_TIME_INTERVAL
 from app.services.progress import StepProgressReporter
 from app.models import PageMeta
 from app.config import settings
@@ -20,20 +20,6 @@ logger = logging.getLogger("app.llm.anthropic")
 
 # Timeout: 5s connect, 5min read (enough for large responses, not infinite)
 API_TIMEOUT = anthropic.Timeout(connect=5.0, read=300.0, write=300.0, pool=300.0)
-
-# Emit a detail line every this many accumulated chars
-DETAIL_CHAR_INTERVAL = 200
-# Or every this many seconds, whichever comes first
-DETAIL_TIME_INTERVAL = 8
-
-
-def _extract_json(text: str) -> dict:
-    """Extract JSON from LLM response text, handling markdown code fences."""
-    if "```json" in text:
-        text = text.split("```json")[1].split("```")[0]
-    elif "```" in text:
-        text = text.split("```")[1].split("```")[0]
-    return json.loads(text.strip())
 
 
 class AnthropicProvider(LLMProvider):
@@ -136,7 +122,7 @@ class AnthropicProvider(LLMProvider):
             )
             text = response.content[0].text
             logger.debug("Raw LLM response (%d chars): %s", len(text), text[:200])
-            result = _extract_json(text)
+            result = extract_json(text)
             logger.info("Categorization complete: %d sections", len(result.get("sections", [])))
             return result
 
@@ -156,7 +142,7 @@ class AnthropicProvider(LLMProvider):
             if response.stop_reason == "end_turn":
                 text = "".join(b.text for b in response.content if b.type == "text")
                 logger.debug("Final LLM response (%d chars): %s", len(text), text[:200])
-                result = _extract_json(text)
+                result = extract_json(text)
                 logger.info("Categorization complete after %d tool rounds: %d sections", round_num, len(result.get("sections", [])))
                 return result
 
@@ -188,7 +174,7 @@ class AnthropicProvider(LLMProvider):
             reporter=reporter,
         )
         text = response.content[0].text
-        result = _extract_json(text)
+        result = extract_json(text)
         logger.info("Categorization complete (fallback): %d sections", len(result.get("sections", [])))
         return result
 
@@ -220,6 +206,6 @@ class AnthropicProvider(LLMProvider):
 
         text = response.content[0].text
         logger.debug("Summarize response (%d chars): %s", len(text), text[:200])
-        result = _extract_json(text)
+        result = extract_json(text)
         logger.info("Summarize complete: %d sections", len(result.get("sections", [])))
         return result
