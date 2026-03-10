@@ -60,7 +60,7 @@ export function useJob() {
     const handlePopState = () => {
       const match = window.location.pathname.match(/^\/([0-9a-f-]{36})$/);
       if (match) {
-        setJobIdRaw(match[1]);
+        setJobIdRaw(match[1] ?? null);
       } else {
         // Back to home
         setJobIdRaw(null);

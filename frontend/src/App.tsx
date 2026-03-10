@@ -15,7 +15,6 @@ export default function App() {
   const [mode, setMode] = useSessionState<InputMode>('app_input_mode', 'url');
   const {
     submitJob,
-    regenerate,
     reset,
     loadCached,
     generateNew,
