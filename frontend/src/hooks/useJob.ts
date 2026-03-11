@@ -43,7 +43,9 @@ export function useJob() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { status: liveStatus, result, error, steps } = useSSE(jobId);
+  // Only connect SSE for jobs that need streaming (not already-completed loads)
+  const sseJobId = savedStatus === 'completed' ? null : jobId;
+  const { status: liveStatus, result, error, steps } = useSSE(sseJobId);
 
   // Use live status when a job is active, otherwise fall back to saved status
   const status = liveStatus ?? savedStatus;
