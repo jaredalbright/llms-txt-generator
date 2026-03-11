@@ -133,8 +133,10 @@ When `SUPABASE_URL` and `SUPABASE_KEY` are set, the app automatically uses Supab
 | `POST` | `/api/generate` | Start a new generation job |
 | `GET` | `/api/generate/{job_id}/stream` | SSE stream for job progress |
 | `POST` | `/api/generate/{job_id}/download.zip` | Download full archive (base, md, ctx) |
-| `POST` | `/api/reprompt` | Modify existing markdown via LLM |
 | `POST` | `/api/validate` | Validate llms.txt against spec |
+| `GET` | `/api/generations/recent` | List recently completed generations |
+| `GET` | `/api/generations/search` | Search previous generations by URL |
+| `GET` | `/api/generations/{id}` | Get a single generation with markdown |
 
 ## System Workflow
 
