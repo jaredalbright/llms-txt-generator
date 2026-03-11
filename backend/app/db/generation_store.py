@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 
 from app.models.generation import Generation
+from app.services.url_utils import normalize_url
 
 
 class GenerationStore(ABC):
@@ -15,6 +16,12 @@ class GenerationStore(ABC):
 
     @abstractmethod
     async def update(self, generation_id: str, **fields) -> None: ...
+
+    @abstractmethod
+    async def find_by_url(self, url: str, limit: int = 3) -> list[dict]: ...
+
+    @abstractmethod
+    async def list_recent(self, limit: int = 10) -> list[dict]: ...
 
 
 class InMemoryGenerationCache(GenerationStore):
@@ -44,6 +51,43 @@ class InMemoryGenerationCache(GenerationStore):
             setattr(gen, key, value)
         gen.updated_at = datetime.now(timezone.utc)
         self._cache_manager.touch(generation_id)
+
+    async def find_by_url(self, url: str, limit: int = 3) -> list[dict]:
+        """Find completed generations matching a URL."""
+        norm = normalize_url(url)
+        matches = [
+            gen for gen in self._generations.values()
+            if normalize_url(gen.url) == norm and gen.markdown_base is not None
+        ]
+        matches.sort(key=lambda g: g.updated_at, reverse=True)
+        return [
+            {
+                "id": gen.id,
+                "url": gen.url,
+                "status": "completed",
+                "created_at": gen.created_at.isoformat(),
+                "pages_found": len(gen.pages),
+            }
+            for gen in matches[:limit]
+        ]
+
+    async def list_recent(self, limit: int = 10) -> list[dict]:
+        """List recent completed generations."""
+        completed = [
+            gen for gen in self._generations.values()
+            if gen.markdown_base is not None
+        ]
+        completed.sort(key=lambda g: g.updated_at, reverse=True)
+        return [
+            {
+                "id": gen.id,
+                "url": gen.url,
+                "status": "completed",
+                "created_at": gen.created_at.isoformat(),
+                "pages_found": len(gen.pages),
+            }
+            for gen in completed[:limit]
+        ]
 
     def _remove(self, generation_id: str) -> None:
         self._generations.pop(generation_id, None)

@@ -4,13 +4,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import generate, validate
+from app.routers import generate, validate, generations
 from app.config import settings
 from app.db import (
     CacheManager, init_cache_manager,
     InMemoryJobCache, init_job_repo,
     InMemoryGenerationCache, init_generation_store,
 )
+from app.db.client import get_supabase
 
 # Configure root logger
 logging.basicConfig(
@@ -41,11 +42,22 @@ app = FastAPI(title="llms.txt Generator API", lifespan=lifespan)
 
 cache_mgr = CacheManager(max_entries=settings.cache_max_entries)
 job_cache = InMemoryJobCache(cache_mgr)
-gen_cache = InMemoryGenerationCache(cache_mgr)
-cache_mgr.register_stores(job_cache, gen_cache)
 init_cache_manager(cache_mgr)
 init_job_repo(job_cache)
-init_generation_store(gen_cache)
+
+# Check if Supabase is available for generation storage
+supabase_client = get_supabase()
+if supabase_client:
+    from app.db.supabase_store import SupabaseGenerationStore
+    gen_store = SupabaseGenerationStore(supabase_client)
+    cache_mgr.register_stores(job_cache)
+    init_generation_store(gen_store)
+    logger.info("Storage: Supabase")
+else:
+    gen_cache = InMemoryGenerationCache(cache_mgr)
+    cache_mgr.register_stores(job_cache, gen_cache)
+    init_generation_store(gen_cache)
+    logger.info("Storage: In-memory")
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,6 +69,7 @@ app.add_middleware(
 
 app.include_router(generate.router, prefix="/api")
 app.include_router(validate.router, prefix="/api")
+app.include_router(generations.router, prefix="/api")
 
 
 @app.middleware("http")

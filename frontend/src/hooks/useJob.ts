@@ -159,6 +159,14 @@ export function useJob() {
     setJobId(response.job_id);
   }, [setJobId]);
 
+  const loadPrevious = useCallback((id: string, markdownContent: string) => {
+    setMarkdown(markdownContent);
+    setSavedStatus('completed');
+    setJobId(id);
+    setCacheHit(null);
+    pendingRequestRef.current = null;
+  }, [setMarkdown, setSavedStatus, setJobId]);
+
   const regenerate = useCallback(async () => {
     if (!url) return;
     setMarkdown('');
@@ -193,6 +201,7 @@ export function useJob() {
     reset,
     loadCached,
     generateNew,
+    loadPrevious,
     cacheHit,
     markdown,
     setMarkdown,

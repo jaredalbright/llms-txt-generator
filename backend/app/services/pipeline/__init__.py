@@ -61,6 +61,17 @@ async def run_pipeline(job_id: str, url: str, repo: JobRepository, prompts_conte
             timeout=settings.job_timeout,
         )
 
+        # Persist generation outputs to the generation store (Supabase or in-memory)
+        await gen_store.update(
+            job_id,
+            status="completed",
+            markdown_base=generation.markdown_base,
+            markdown_md=generation.markdown_md,
+            llms_ctx=generation.llms_ctx,
+            child_pages=generation.child_pages,
+            pages_found=len(generation.pages),
+        )
+
         # Sync final outputs back to the job for backward compatibility
         await repo.update(
             job_id,
@@ -84,7 +95,7 @@ async def run_pipeline(job_id: str, url: str, repo: JobRepository, prompts_conte
 
         user_message = sanitize_error(e)
 
-        await gen_store.update(job_id, error=str(e))
+        await gen_store.update(job_id, status="error", error=str(e))
         await repo.update(job_id, status="error", error=str(e))
 
         await queue.put({
