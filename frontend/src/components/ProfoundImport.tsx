@@ -157,9 +157,6 @@ export default function ProfoundImport({ onGenerate, disabled }: ProfoundImportP
                 disabled={loading}
                 className="flex items-center gap-3 w-full bg-white border border-profound-border rounded-lg px-4 py-3 text-left hover:border-profound-blue transition-colors cursor-pointer disabled:opacity-50"
               >
-                {asset.logo_url && (
-                  <img src={asset.logo_url} alt="" className="w-6 h-6 rounded" />
-                )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-gray-900 truncate">{asset.name}</p>
                   <p className="text-xs text-profound-muted truncate">{asset.website}</p>
