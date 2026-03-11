@@ -13,7 +13,7 @@ Here is the current structured data (JSON):
 
 Using the actual page content from the llms-ctx, improve the structured data:
 1. Improve the "description" to accurately describe what the site is about based on actual content
-2. Improve the "details" to provide richer context about the project
+2. Improve the "details" to provide richer context about the project. Details should space out different sections within details and add bulletpoints when necessary while still working with llm.txt standards.
 3. Improve each page's "description" to reflect what the page actually contains
 4. Keep the same sections and page URLs — only improve text fields
 

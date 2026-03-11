@@ -48,7 +48,14 @@ export default function App() {
 
   const handleModeSwitch = (newMode: InputMode) => {
     if (newMode === mode) return;
-    if (jobId) reset();
+    const hasResultOnPage =
+      Boolean(jobId) ||
+      Boolean(markdown) ||
+      Boolean(status) ||
+      Boolean(error) ||
+      Boolean(cacheHit) ||
+      steps.length > 0;
+    if (hasResultOnPage) reset();
     setMode(newMode);
   };
 
