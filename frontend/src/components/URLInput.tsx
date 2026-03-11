@@ -100,17 +100,7 @@ export default function URLInput({ onSubmit, disabled }: URLInputProps) {
                     onClick={() => handleLoadSuggestion(s.url)}
                     className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors cursor-pointer"
                   >
-                    <span className="flex items-center gap-2 min-w-0">
-                      <img
-                        src={`https://www.google.com/s2/favicons?domain=${extractDomain(s.url)}&sz=16`}
-                        alt=""
-                        width={16}
-                        height={16}
-                        referrerPolicy="no-referrer"
-                        className="shrink-0"
-                      />
-                      <span className="text-sm text-gray-900 truncate">{extractDomain(s.url)}</span>
-                    </span>
+                    <span className="text-sm text-gray-900 truncate">{extractDomain(s.url)}</span>
                     <span className="text-xs text-profound-muted whitespace-nowrap">{timeAgo(s.created_at)}</span>
                   </button>
                 </li>
