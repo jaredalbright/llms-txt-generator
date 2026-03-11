@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchRecentGenerations, fetchGeneration } from '../lib/generations';
 import { extractDomain, timeAgo } from '../lib/timeago';
-import { faviconUrl } from '../lib/api';
 import type { GenerationSummary } from '../types';
 
 interface RecentCarouselProps {
@@ -84,10 +83,11 @@ export default function RecentCarousel({ onSelect }: RecentCarouselProps) {
                   className="flex items-center gap-2.5 px-3 py-2 border border-profound-border rounded-lg bg-white hover:bg-gray-50 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
                 >
                   <img
-                    src={faviconUrl(domain)}
+                    src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
                     alt=""
                     width={16}
                     height={16}
+                    referrerPolicy="no-referrer"
                     className="shrink-0"
                   />
                   <span className="text-sm text-gray-900 whitespace-nowrap">{domain}</span>

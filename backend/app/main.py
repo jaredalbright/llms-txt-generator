@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import generate, validate, generations, favicon
+from app.routers import generate, validate, generations
 from app.config import settings
 from app.db import (
     CacheManager, init_cache_manager,
@@ -70,7 +70,6 @@ app.add_middleware(
 app.include_router(generate.router, prefix="/api")
 app.include_router(validate.router, prefix="/api")
 app.include_router(generations.router, prefix="/api")
-app.include_router(favicon.router, prefix="/api")
 
 
 @app.middleware("http")

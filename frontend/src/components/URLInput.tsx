@@ -1,7 +1,6 @@
 import { useState, useRef, type FormEvent } from 'react';
 import { useUrlSuggestions } from '../hooks/useUrlSuggestions';
 import { extractDomain, timeAgo } from '../lib/timeago';
-import { faviconUrl } from '../lib/api';
 
 interface URLInputProps {
   onSubmit: (url: string, clientInfo?: string) => void;
@@ -103,10 +102,11 @@ export default function URLInput({ onSubmit, disabled }: URLInputProps) {
                   >
                     <span className="flex items-center gap-2 min-w-0">
                       <img
-                        src={faviconUrl(extractDomain(s.url), 16)}
+                        src={`https://www.google.com/s2/favicons?domain=${extractDomain(s.url)}&sz=16`}
                         alt=""
                         width={16}
                         height={16}
+                        referrerPolicy="no-referrer"
                         className="shrink-0"
                       />
                       <span className="text-sm text-gray-900 truncate">{extractDomain(s.url)}</span>

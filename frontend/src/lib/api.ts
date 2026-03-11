@@ -35,10 +35,6 @@ export function validate(data: ValidateRequest): Promise<ValidateResponse> {
   });
 }
 
-export function faviconUrl(domain: string, size: number = 32): string {
-  return `${API_URL}/api/favicon?domain=${encodeURIComponent(domain)}&sz=${size}`;
-}
-
 export async function downloadZip(jobId: string, markdown: string): Promise<void> {
   const res = await fetch(`${API_URL}/api/generate/${jobId}/download.zip`, {
     method: 'POST',
