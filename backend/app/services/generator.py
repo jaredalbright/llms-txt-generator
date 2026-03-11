@@ -54,7 +54,11 @@ def _assemble_lines(structured_data: dict[str, Any], url_lookup: dict[str, str] 
         lines.append("")
 
     if structured_data.get("details"):
-        lines.append(structured_data["details"])
+        details = structured_data["details"].strip()
+        # Ensure blank lines before bullet lists and bold headers for proper markdown
+        details = re.sub(r'([^\n])\n([-•*] )', r'\1\n\n\2', details)
+        details = re.sub(r'([^\n])\n(\*\*[^*]+:\*\*)', r'\1\n\n\2', details)
+        lines.append(details)
         lines.append("")
 
     for section in structured_data.get("sections", []):
@@ -114,7 +118,11 @@ def assemble_llms_ctx(structured_data: dict[str, Any], child_pages: list) -> str
         lines.append("")
 
     if structured_data.get("details"):
-        lines.append(structured_data["details"])
+        details = structured_data["details"].strip()
+        # Ensure blank lines before bullet lists and bold headers for proper markdown
+        details = re.sub(r'([^\n])\n([-•*] )', r'\1\n\n\2', details)
+        details = re.sub(r'([^\n])\n(\*\*[^*]+:\*\*)', r'\1\n\n\2', details)
+        lines.append(details)
         lines.append("")
 
     for section in structured_data.get("sections", []):

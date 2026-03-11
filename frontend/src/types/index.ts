@@ -1,5 +1,13 @@
 export type JobStatus = 'pending' | 'crawling' | 'processing' | 'extracting_content' | 'summarizing' | 'completed' | 'error';
 
+export interface GenerationSummary {
+  id: string;
+  url: string;
+  status: string;
+  created_at: string;
+  pages_found: number;
+}
+
 export interface Job {
   id: string;
   url: string;

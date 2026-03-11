@@ -5,6 +5,7 @@ import ProfoundImport from './components/ProfoundImport';
 import PipelineProgress from './components/PipelineProgress';
 import EditorPreview from './components/EditorPreview';
 import PostDownloadModal from './components/PostDownloadModal';
+import RecentCarousel from './components/RecentCarousel';
 import { useJob } from './hooks/useJob';
 import { useSessionState } from './hooks/useSessionState';
 import { downloadZip as downloadZipApi } from './lib/api';
@@ -17,6 +18,7 @@ export default function App() {
     submitJob,
     reset,
     loadCached,
+    loadPrevious,
     generateNew,
     cacheHit,
     markdown,
@@ -48,7 +50,7 @@ export default function App() {
 
   const handleModeSwitch = (newMode: InputMode) => {
     if (newMode === mode) return;
-    if (jobId) reset();
+    reset();
     setMode(newMode);
   };
 
@@ -115,6 +117,11 @@ export default function App() {
             onGenerate={(url, promptsContext) => submitJob(url, undefined, promptsContext)}
             disabled={isLoading}
           />
+        )}
+
+        {/* Recent generations carousel */}
+        {!isLoading && !isComplete && !error && steps.length === 0 && mode === 'url' && (
+          <RecentCarousel onSelect={(id, md) => loadPrevious(id, md)} />
         )}
 
         {/* Cache hit modal */}

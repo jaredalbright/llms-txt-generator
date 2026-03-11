@@ -1,14 +1,20 @@
 from supabase import create_client, Client
 from app.config import settings
 
-# TODO: Initialize once Supabase project is created and env vars are set
-# supabase: Client = create_client(settings.supabase_url, settings.supabase_key)
+_client: Client | None = None
+_initialized = False
 
 
-def get_supabase() -> Client:
+def get_supabase() -> Client | None:
+    """Return a Supabase client if configured, otherwise None.
+
+    Lazily initializes on first call. Returns None when SUPABASE_URL
+    or SUPABASE_KEY are empty, allowing the app to fall back to
+    in-memory storage.
     """
-    TODO: Uncomment and use once Supabase is configured.
-    For now, the app runs with in-memory job storage (see routers/generate.py).
-    """
-    # return supabase
-    raise NotImplementedError("Supabase not configured yet — using in-memory storage")
+    global _client, _initialized
+    if not _initialized:
+        _initialized = True
+        if settings.supabase_url and settings.supabase_key:
+            _client = create_client(settings.supabase_url, settings.supabase_key)
+    return _client

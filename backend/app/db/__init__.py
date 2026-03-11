@@ -6,6 +6,7 @@ from app.db.generation_store import (
     get_generation_store,
     init_generation_store,
 )
+from app.db.supabase_store import SupabaseGenerationStore
 from app.db.cache import CacheManager, init_cache_manager, get_cache_manager
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "init_job_repo",
     "GenerationStore",
     "InMemoryGenerationCache",
+    "SupabaseGenerationStore",
     "get_generation_store",
     "init_generation_store",
     "CacheManager",

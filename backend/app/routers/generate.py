@@ -14,6 +14,7 @@ from app.models import (
 )
 from app.db.repository import JobRepository, get_job_repo
 from app.db.cache import get_cache_manager
+from app.db.generation_store import get_generation_store
 from app.services.pipeline import run_pipeline
 from app.services.generator import convert_base_to_md, deduplicate_slugs, _cp_attr
 
@@ -24,7 +25,7 @@ router = APIRouter()
 
 @router.post("/generate", response_model=GenerateResponse)
 async def create_job(req: GenerateRequest, repo: JobRepository = Depends(get_job_repo)):
-    # Cache-hit check
+    # Cache-hit check: in-memory first, then Supabase fallback
     if not req.force:
         cache_mgr = get_cache_manager()
         cached_job_id = cache_mgr.lookup_url(str(req.url))
@@ -33,6 +34,17 @@ async def create_job(req: GenerateRequest, repo: JobRepository = Depends(get_job
             if cached_job and cached_job.status == "completed" and cached_job.markdown:
                 logger.info("Cache hit for URL %s → job %s", req.url, cached_job_id[:8])
                 return GenerateResponse(job_id=cached_job_id, cached=True, markdown=cached_job.markdown)
+
+        if not cached_job_id:
+            # Check Supabase for previous completions
+            gen_store = get_generation_store()
+            previous = await gen_store.find_by_url(str(req.url), limit=1)
+            if previous:
+                prev = previous[0]
+                prev_gen = await gen_store.get(prev["id"])
+                if prev_gen and prev_gen.markdown_base:
+                    logger.info("Supabase cache hit for URL %s → gen %s", req.url, prev["id"][:8])
+                    return GenerateResponse(job_id=prev["id"], cached=True, markdown=prev_gen.markdown_base)
 
     job_id = str(uuid.uuid4())
     event_queue = asyncio.Queue()

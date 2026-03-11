@@ -18,8 +18,8 @@
 - Custom tokens use `profound-*` prefix
 
 ## Design System (see `frontend/src/index.css`)
-- Dark theme: black background
-- Colors: `profound-yellow` (#FFEA35), `profound-card` (#141414), `profound-border` (#1F1F1F), `profound-muted` (#A1A1AA)
+- LIGHT theme (NOT dark) - white background
+- Colors: `profound-blue` (#376CFF), `profound-surface` (#FAFAFA), `profound-card` (#FFFFFF), `profound-border` (#E5E7EB), `profound-muted` (#6B7280), `profound-light` (#111827)
 - Fonts: Inter (sans), JetBrains Mono (mono)
 
 ## File Structure (`frontend/src/`)
@@ -27,9 +27,12 @@
 - `App.tsx` — main app component, job orchestration
 - `types/index.ts` — Job, GenerateRequest/Response, RepromptRequest/Response, ValidateRequest/Response
 - `lib/api.ts` — generic `request<T>` wrapper, exports `startGeneration`, `reprompt`, `validate`
+- `lib/generations.ts` — fetchRecentGenerations, searchGenerationsByUrl
+- `lib/timeago.ts` — timeAgo, extractDomain helpers
 - `lib/markdown.ts` — markdown rendering utilities
 - `hooks/useSSE.ts` — EventSource connection management
 - `hooks/useJob.ts` — orchestrates full job lifecycle (generate → SSE → result)
+- `hooks/useUrlSuggestions.ts` — debounced URL search for autocomplete
 - `components/Layout.tsx` — page shell, header/footer
 - `components/URLInput.tsx` — URL input form
 - `components/PipelineProgress.tsx` — real-time pipeline step progress
