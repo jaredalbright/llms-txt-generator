@@ -1,5 +1,10 @@
 # llms.txt Generator
 
+Live Link (https://llms-txt-generator-theta.vercel.app/)
+
+Demo1 (https://youtu.be/99ZPRp8peeE)
+Demo2 (https://youtu.be/hCkxb8WWtzE)
+
 A web application that crawls a website, extracts metadata, uses an LLM to categorize and summarize pages, and produces a spec-compliant [llms.txt](https://llmstxt.org/) file you can edit, reprompt, and download.
 
 ## Architecture
